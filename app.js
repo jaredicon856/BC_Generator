@@ -14,6 +14,18 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── Password gate ──────────────────────────────────────
+// Protects the API (which spends Anthropic credits) behind a shared access
+// code. Set APP_PASSWORD in the environment to enable. If unset, the gate is
+// disabled — convenient for local dev, but never deploy publicly without it.
+const APP_PASSWORD = process.env.APP_PASSWORD || '';
+app.use('/api', (req, res, next) => {
+  if (!APP_PASSWORD) return next();
+  const provided = req.get('x-access-code') || '';
+  if (provided === APP_PASSWORD) return next();
+  return res.status(401).json({ ok: false, error: 'Invalid or missing access code' });
+});
+
 // ── SSE helpers ────────────────────────────────────────
 function startSSE(res) {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -90,7 +102,13 @@ app.post('/api/export-pdf', async (req, res) => {
   }
 });
 
+// Only start a listener when run directly (local dev / `npm start`).
+// On Vercel the app is imported as a serverless handler (see api/index.js).
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n  Podcast Battlecard running at http://localhost:${PORT}\n`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n  Podcast Battlecard running at http://localhost:${PORT}\n`);
+  });
+}
+
+module.exports = app;

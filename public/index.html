@@ -1396,6 +1396,28 @@ async function readSSEStream(res, onEvent) {
   }
 }
 
+// ── Access code (password gate) ────────────────────────
+// The API is protected by a shared access code. We store it in localStorage
+// and send it as an x-access-code header on every API request.
+function getAccessCode() {
+  let code = localStorage.getItem('bc_access');
+  if (!code) {
+    code = prompt('Enter the access code to use the generator:') || '';
+    code = code.trim();
+    if (code) localStorage.setItem('bc_access', code);
+  }
+  return code;
+}
+function authHeaders(extra = {}) {
+  return { ...extra, 'x-access-code': getAccessCode() };
+}
+function checkAuth(res) {
+  if (res.status === 401) {
+    localStorage.removeItem('bc_access'); // wrong code — force re-prompt next time
+    throw new Error('Access denied — check your access code and try again.');
+  }
+}
+
 // ── State ──────────────────────────────────────────────
 let battlecard = null;
 let pitch = null;
@@ -1525,7 +1547,8 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     const pdfFile = document.getElementById('figma-pdf').files[0];
     if (pdfFile) fd.append('figmaPdf', pdfFile);
 
-    const res = await fetch('/api/generate', { method: 'POST', body: fd });
+    const res = await fetch('/api/generate', { method: 'POST', body: fd, headers: authHeaders() });
+    checkAuth(res);
     await readSSEStream(res, (event, payload) => {
       if (event === 'progress') {
         updateLoading(payload.tokens, 250, BATTLECARD_STEPS);
@@ -1580,9 +1603,10 @@ async function generatePitchFlow(bc) {
 
   const res = await fetch('/api/generate-pitch', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
+  checkAuth(res);
 
   await readSSEStream(res, (event, data) => {
     if (event === 'progress') {
@@ -1877,9 +1901,10 @@ document.getElementById('btn-export-pdf').addEventListener('click', async () => 
   try {
     const res = await fetch('/api/export-pdf', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ battlecard, pitch }),
     });
+    checkAuth(res);
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
       throw new Error(errBody.error || `Server error ${res.status}`);
