@@ -1,6 +1,5 @@
-const Anthropic = require('@anthropic-ai/sdk');
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = require('./anthropic');
+const { parseJSON } = require('./utils');
 
 const SYSTEM_PROMPT = `You are a podcast guest prospecting and booking strategist.
 Return ONLY valid JSON. No markdown. No preamble. No explanation outside the JSON.
@@ -179,8 +178,7 @@ Generate the full pitch JSON now.
     }
   }
 
-  const cleaned = text.trim().replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-  return JSON.parse(cleaned);
+  return parseJSON(text);
 }
 
 module.exports = { generatePitch };
