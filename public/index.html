@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Podcast Battlecard Generator — Project ICON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --brand-primary: #032225;
+    --brand-primary-dark: #041A1C;
+    --brand-accent: #E9BF5E;
+    --brand-accent-mid: #B0863C;
+    --brand-accent-deep: #966C2B;
+    --brand-bg: #FFFFFF;
+    --brand-card-bg: #F7F5F0;
+    --brand-text: #041A1C;
+    --brand-muted: #966C2B;
+    --brand-border: rgba(162, 120, 51, 0.25);
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'SF UI Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --sidebar-w: 380px;
+    --header-h: 60px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--brand-bg);
+    color: var(--brand-text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  #app-header {
+    background: var(--brand-primary);
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(233, 191, 94, 0.2);
+  }
+
+  #app-header .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex: 1;
+  }
+
+  #app-header .brand-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  #app-header .brand-subtitle {
+    font-size: 12px;
+    color: var(--brand-accent);
+    letter-spacing: 0.5px;
+  }
+
+  #btn-export-pdf {
+    background: var(--brand-accent);
+    color: var(--brand-primary-dark);
+    border: none;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    letter-spacing: 0.2px;
+  }
+
+  #btn-export-pdf:hover:not(:disabled) { background: var(--brand-accent-mid); }
+
+  #btn-export-pdf:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* ── Layout ─────────────────────────────────────────── */
+  #layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: #fff;
+    border-right: 1px solid var(--brand-border);
+    overflow-y: auto;
+    padding: 24px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+    margin-bottom: 2px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .form-group label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--brand-text);
+    background: #fff;
+    border: 1px solid var(--brand-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    resize: vertical;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus {
+    border-color: var(--brand-accent-mid);
+  }
+
+  .form-group textarea { min-height: 80px; }
+  #transcript-input { min-height: 120px; }
+  #brand-text-input { min-height: 60px; }
+
+  .divider {
+    height: 1px;
+    background: var(--brand-border);
+    margin: 4px 0;
+  }
+
+  /* Offers repeatable block */
+  #offers-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .offer-item {
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  }
+
+  .offer-item input {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--brand-text);
+    background: #fff;
+    border: 1px solid var(--brand-border);
+    border-radius: 5px;
+    padding: 6px 8px;
+    outline: none;
+    width: 100%;
+  }
+
+  .offer-item input:focus { border-color: var(--brand-accent-mid); }
+
+  .offer-item .offer-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+    margin-bottom: 1px;
+  }
+
+  .offer-item .remove-offer {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--brand-muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .offer-item .remove-offer:hover { color: var(--brand-accent-mid); }
+
+  #btn-add-offer {
+    background: none;
+    border: 1px dashed var(--brand-border);
+    border-radius: 6px;
+    color: var(--brand-muted);
+    font-family: var(--font-body);
+    font-size: 12px;
+    padding: 7px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    width: 100%;
+  }
+
+  #btn-add-offer:hover { border-color: var(--brand-accent-mid); color: var(--brand-accent-mid); }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .toggle-row label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+  }
+
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #ddd;
+    border-radius: 22px;
+    transition: 0.2s;
+  }
+
+  .toggle-slider:before {
+    content: '';
+    position: absolute;
+    height: 16px; width: 16px;
+    left: 3px; bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+
+  .toggle input:checked + .toggle-slider { background: var(--brand-accent); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+  /* File upload */
+  .file-upload-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .file-upload-row input[type=file] {
+    font-size: 11px;
+    color: var(--brand-muted);
+    flex: 1;
+  }
+
+  /* Generate button */
+  #btn-generate {
+    background: var(--brand-accent);
+    color: var(--brand-primary-dark);
+    border: none;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    width: 100%;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+  }
+
+  #btn-generate:hover:not(:disabled) { background: var(--brand-accent-mid); }
+
+  #btn-generate:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Figma upload zone */
+  #figma-drop-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px dashed var(--brand-border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fff;
+  }
+
+  #figma-drop-zone:hover { border-color: var(--brand-accent-mid); background: var(--brand-card-bg); }
+
+  #figma-drop-zone.has-file {
+    border-style: solid;
+    border-color: var(--brand-accent-mid);
+    background: var(--brand-card-bg);
+  }
+
+  #figma-file-name {
+    font-size: 12px;
+    color: var(--brand-muted);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #figma-drop-zone.has-file #figma-file-name { color: var(--brand-text); }
+
+  /* Offer stack section — hidden by default */
+  #offer-stack-section {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  /* Buyer profile section — hidden by default */
+  #buyer-profile-section {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  /* ICP pitch section — hidden by default */
+  #icp-pitch-section {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  /* Pitch builder section — hidden by default */
+  #pitch-builder-section {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  #pitch-fathom-section,
+  #pitch-manual-section {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Mode selector bar */
+  .pitch-mode-bar {
+    display: flex;
+    gap: 6px;
+  }
+
+  .pitch-mode-btn {
+    flex: 1;
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 7px;
+    color: var(--brand-muted);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 8px 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+
+  .pitch-mode-btn:hover { border-color: var(--brand-accent-mid); color: var(--brand-text); }
+
+  .pitch-mode-btn.active {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: var(--brand-accent);
+  }
+
+  .pitch-mode-hint {
+    font-size: 11px;
+    color: var(--brand-muted);
+    font-style: italic;
+    line-height: 1.4;
+    margin: 0;
+    padding: 6px 10px;
+    background: var(--brand-card-bg);
+    border-radius: 6px;
+    border-left: 3px solid var(--brand-border);
+  }
+
+  /* Fathom notice box */
+  .pitch-fathom-notice {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-left: 3px solid var(--brand-accent);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .pitch-fathom-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+  .pitch-fathom-notice strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-text);
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .pitch-fathom-notice p {
+    font-size: 11px;
+    color: var(--brand-muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* "The Art of the 1 Way Referral" title */
+  .pitch-art-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--brand-accent-mid);
+    letter-spacing: 0.2px;
+    padding: 8px 0 4px;
+    border-bottom: 1px solid var(--brand-border);
+    margin-bottom: 2px;
+  }
+
+  /* Generate Pitch button */
+  #btn-generate-pitch {
+    background: var(--brand-primary);
+    color: var(--brand-accent);
+    border: 1px solid rgba(233,191,94,0.3);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    width: 100%;
+    letter-spacing: 0.3px;
+    margin-top: 8px;
+  }
+
+  #btn-generate-pitch:hover:not(:disabled) { background: #053035; border-color: rgba(233,191,94,0.5); }
+  #btn-generate-pitch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+  /* Pitch tab empty state */
+  .pitch-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 12px;
+  }
+
+  .pitch-empty h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--brand-text);
+    opacity: 0.4;
+  }
+
+  .pitch-empty p {
+    font-size: 13px;
+    color: var(--brand-muted);
+    opacity: 0.7;
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.6;
+  }
+
+  /* Pitch script card */
+  .pitch-step-card {
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+  }
+
+  .pitch-step-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--brand-accent-mid);
+    margin-bottom: 6px;
+  }
+
+  .pitch-step-body {
+    font-size: 13px;
+    color: var(--brand-text);
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+
+  .missing-input-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #FDF8F0;
+    border-left: 3px solid var(--brand-accent-mid);
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--brand-muted);
+  }
+
+  /* ── Main content ─────────────────────────────────────── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Tabs */
+  #tab-bar {
+    display: flex;
+    border-bottom: 2px solid var(--brand-accent);
+    background: #fff;
+    padding: 0 24px;
+    flex-shrink: 0;
+  }
+
+  .tab-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: #aaa;
+    background: none;
+    border: none;
+    padding: 14px 16px 12px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s;
+    letter-spacing: 0.2px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+  }
+
+  .tab-btn:hover { color: var(--brand-text); }
+
+  .tab-btn.active {
+    color: var(--brand-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--brand-accent);
+  }
+
+  /* Tab panels */
+  #tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 28px 40px;
+    background: var(--brand-bg);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Empty state */
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    gap: 12px;
+  }
+
+  #empty-state .icon {
+    font-size: 40px;
+    opacity: 0.25;
+  }
+
+  #empty-state h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--brand-text);
+    opacity: 0.4;
+  }
+
+  #empty-state p {
+    font-size: 13px;
+    color: var(--brand-muted);
+    opacity: 0.7;
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.6;
+  }
+
+  /* ── Card components ─────────────────────────────────── */
+  .bc-section { margin-bottom: 28px; }
+
+  .bc-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--brand-accent);
+  }
+
+  .bc-card {
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+  }
+
+  .bc-card-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--brand-text);
+    margin-bottom: 6px;
+  }
+
+  .bc-card-meta {
+    font-size: 12px;
+    color: var(--brand-muted);
+    margin-bottom: 4px;
+  }
+
+  .bc-card-body {
+    font-size: 13px;
+    color: var(--brand-text);
+    line-height: 1.55;
+  }
+
+  /* Tags */
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag-gold {
+    background: var(--brand-accent);
+    color: var(--brand-muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.2px;
+  }
+
+  .tag-neutral {
+    background: var(--brand-card-bg);
+    color: var(--brand-text);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--brand-border);
+  }
+
+  .tag-warm {
+    background: #FDF3DC;
+    color: var(--brand-accent-deep);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .tag-intent {
+    background: #F0EBE0;
+    color: var(--brand-accent-mid);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* Seniority table */
+  .seniority-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .seniority-table th {
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 4px 10px 8px;
+    border-bottom: 1px solid var(--brand-border);
+  }
+
+  .seniority-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--brand-border);
+    color: var(--brand-text);
+    vertical-align: top;
+  }
+
+  .seniority-table tr:last-child td { border-bottom: none; }
+
+  .priority-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  .priority-high { background: #FDF3DC; color: var(--brand-accent-deep); }
+  .priority-medium { background: var(--brand-card-bg); color: var(--brand-muted); }
+  .priority-low { background: #f5f5f5; color: #999; }
+
+  /* Stat cards row */
+  .stat-cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .stat-card {
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .stat-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+    margin-bottom: 4px;
+  }
+
+  .stat-card-value {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--brand-text);
+  }
+
+  .stat-card-note {
+    font-size: 11px;
+    color: var(--brand-muted);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  /* Boolean string box */
+  .bool-box {
+    background: var(--brand-primary);
+    border-radius: 8px;
+    padding: 16px 18px;
+    position: relative;
+  }
+
+  .bool-box pre {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    color: var(--brand-accent);
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+
+  #btn-copy-bool {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: rgba(233, 191, 94, 0.15);
+    border: 1px solid rgba(233, 191, 94, 0.3);
+    color: var(--brand-accent);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  #btn-copy-bool:hover { background: rgba(233, 191, 94, 0.25); }
+
+  /* Booking form cards */
+  .dq-item {
+    border-left: 3px solid var(--brand-accent-mid);
+    background: #FDF8F0;
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: var(--brand-muted);
+  }
+
+  .dq-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--brand-accent-mid);
+    margin-bottom: 5px;
+  }
+
+  .strong-fit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--brand-card-bg);
+    border-radius: 6px;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: var(--brand-text);
+  }
+
+  .strong-fit-item::before {
+    content: '✓';
+    color: var(--brand-accent-mid);
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* Referral detection */
+  .signal-note {
+    font-size: 12px;
+    font-style: italic;
+    color: #059669;
+    margin-top: 8px;
+  }
+
+  .signal-note::before { content: 'Signal: '; font-style: normal; font-weight: 600; }
+
+  .options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .option-item {
+    font-size: 12px;
+    color: var(--brand-muted);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .option-item::before {
+    content: '·';
+    position: absolute;
+    left: 4px;
+    color: var(--brand-accent-mid);
+  }
+
+  /* Offer matching */
+  .rel-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    background: #FDF3DC;
+    color: var(--brand-accent-deep);
+    padding: 3px 9px;
+    border-radius: 20px;
+    margin-top: 6px;
+  }
+
+  .lead-offer-label {
+    font-size: 12px;
+    color: var(--brand-accent-mid);
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+
+  /* Error banner */
+  #error-banner {
+    display: none;
+    background: #FFF0F0;
+    border: 1px solid #F5C6C6;
+    border-radius: 7px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #8B2020;
+    margin-bottom: 16px;
+  }
+
+  /* Loading overlay on generate button */
+  #btn-generate .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(4,26,28,0.3);
+    border-top-color: var(--brand-primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #progress-bar-wrap {
+    display: none;
+    height: 3px;
+    background: rgba(233,191,94,0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  #progress-bar {
+    height: 100%;
+    background: var(--brand-accent);
+    border-radius: 2px;
+    width: 5%;
+    transition: width 0.3s ease;
+  }
+
+  /* Scrollbar styling */
+  #sidebar::-webkit-scrollbar,
+  #tab-content::-webkit-scrollbar { width: 5px; }
+  #sidebar::-webkit-scrollbar-track,
+  #tab-content::-webkit-scrollbar-track { background: transparent; }
+  #sidebar::-webkit-scrollbar-thumb,
+  #tab-content::-webkit-scrollbar-thumb { background: var(--brand-border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────── -->
+<header id="app-header">
+  <div class="brand">
+    <span class="brand-name">Project ICON</span>
+    <span class="brand-subtitle">Podcast Battlecard Generator</span>
+  </div>
+  <button id="btn-export-pdf" disabled>Export PDF</button>
+</header>
+
+<!-- ── Layout ─────────────────────────────────────────── -->
+<div id="layout">
+
+  <!-- ── Sidebar ─────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <div class="form-section-title">Client Info</div>
+
+    <div class="form-group">
+      <label>Client Name</label>
+      <input type="text" id="client-name" placeholder="Jane Smith" />
+    </div>
+
+    <div class="form-group">
+      <label>Podcast Name</label>
+      <input type="text" id="podcast-name" placeholder="The Authority Podcast" />
+    </div>
+
+    <div class="form-group">
+      <label>Niche / Topic Focus</label>
+      <input type="text" id="niche" placeholder="B2B SaaS, leadership, finance…" />
+    </div>
+
+    <div class="form-group">
+      <label>Geography</label>
+      <input type="text" id="geography" placeholder="North America" value="North America" />
+    </div>
+
+    <div class="divider"></div>
+    <div class="form-section-title">Figma PDF</div>
+
+    <div class="form-group">
+      <label>Upload Figma Export <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(offer stack extracted automatically)</span></label>
+      <label id="figma-drop-zone" for="figma-pdf">
+        <input type="file" id="figma-pdf" accept=".pdf" style="display:none" />
+        <span id="figma-file-name">Choose PDF…</span>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toggle-row">
+      <label>Manual Offer Stack</label>
+      <label class="toggle">
+        <input type="checkbox" id="offer-toggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div id="offer-stack-section">
+      <div id="offers-list"></div>
+      <button id="btn-add-offer">+ Add Offer</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toggle-row">
+      <label>Manual Guest Profile</label>
+      <label class="toggle">
+        <input type="checkbox" id="buyer-toggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div id="buyer-profile-section">
+      <div class="form-group">
+        <label>Ideal Buyer Description</label>
+        <textarea id="ideal-buyer" placeholder="Describe who this podcast guest should be: their role, pain points, buying signals…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Referral Partners Already Identified <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <textarea id="referral-partners" placeholder="e.g. financial advisors, executive coaches, M&amp;A attorneys…" style="min-height:60px"></textarea>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="form-section-title">Call Transcript</div>
+
+    <div class="form-group">
+      <label>Paste Transcript <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(primary data source)</span></label>
+      <textarea id="transcript-input" placeholder="Paste the full onboarding call transcript here. This is the most important input — the AI will prioritize what the host actually said."></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toggle-row">
+      <label>ICP List Needed?</label>
+      <label class="toggle">
+        <input type="checkbox" id="icp-toggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toggle-row">
+      <label class="form-section-title" style="margin:0">Referral Pitch Builder</label>
+      <label class="toggle">
+        <input type="checkbox" id="pitch-builder-toggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div id="pitch-builder-section">
+
+      <!-- Mode selector -->
+      <div class="pitch-mode-bar">
+        <button class="pitch-mode-btn active" data-mode="ai">🧠 AI Brain</button>
+        <button class="pitch-mode-btn" data-mode="manual">✏️ Manual</button>
+      </div>
+
+      <p class="pitch-mode-hint" id="pitch-mode-hint">Claude infers everything from the battlecard and transcript.</p>
+
+      <!-- Manual fields (mode: manual) -->
+      <div id="pitch-manual-section" style="display:none">
+        <div class="pitch-art-title">The Art of the 1 Way Referral</div>
+        <div class="form-group">
+          <label>What You Want</label>
+          <textarea id="what-you-want" placeholder="e.g. Warm referrals — specific intros to wealth managers actively growing their client base" style="min-height:56px"></textarea>
+        </div>
+        <div class="form-group">
+          <label>What You Are Going to Give</label>
+          <textarea id="what-you-give" placeholder="e.g. Free 60-min strategy session + 20% commission on any client that closes" style="min-height:56px"></textarea>
+        </div>
+        <div class="form-group">
+          <label>How You Make It Happen Quickly</label>
+          <textarea id="how-urgency" placeholder="e.g. 10 referrals in 10 days — making a push before the episode drops" style="min-height:56px"></textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="error-banner"></div>
+
+    <button id="btn-generate">Generate Battlecard</button>
+    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────── -->
+  <main id="main">
+    <nav id="tab-bar">
+      <button class="tab-btn active" data-tab="irp">IRP List</button>
+      <button class="tab-btn" data-tab="icp" id="tab-btn-icp" style="display:none">ICP List</button>
+      <button class="tab-btn" data-tab="booking">Booking Form</button>
+      <button class="tab-btn" data-tab="referral">Referral Detection</button>
+      <button class="tab-btn" data-tab="matching">Offer Matching</button>
+      <button class="tab-btn" data-tab="pitch" id="tab-btn-pitch">Referral Pitch</button>
+    </nav>
+
+    <div id="tab-content">
+      <!-- Empty state shown before generation -->
+      <div id="empty-state">
+        <div class="icon">🎙️</div>
+        <h3>No battlecard yet</h3>
+        <p>Fill in the client details and paste the call transcript, then click <strong>Generate Battlecard</strong> to build a complete podcast guest prospecting profile.</p>
+      </div>
+
+      <!-- IRP Tab -->
+      <div class="tab-panel" id="tab-irp">
+        <div class="bc-section" id="irp-job-titles"></div>
+        <div class="bc-section" id="irp-seniority"></div>
+        <div class="bc-section" id="irp-industry"></div>
+        <div class="bc-section" id="irp-company-size"></div>
+        <div class="bc-section" id="irp-geo"></div>
+        <div class="bc-section" id="irp-keywords"></div>
+        <div class="bc-section" id="irp-intent"></div>
+        <div class="bc-section" id="irp-boolean"></div>
+        <div class="bc-section" id="irp-offers"></div>
+      </div>
+
+      <!-- ICP List Tab -->
+      <div class="tab-panel" id="tab-icp">
+        <div class="bc-section" id="icp-job-titles"></div>
+        <div class="bc-section" id="icp-seniority"></div>
+        <div class="bc-section" id="icp-industry"></div>
+        <div class="bc-section" id="icp-company-size"></div>
+        <div class="bc-section" id="icp-geo"></div>
+        <div class="bc-section" id="icp-keywords"></div>
+        <div class="bc-section" id="icp-intent"></div>
+        <div class="bc-section" id="icp-boolean"></div>
+      </div>
+
+      <!-- Booking Form Tab -->
+      <div class="tab-panel" id="tab-booking">
+        <div class="bc-section" id="booking-questions"></div>
+        <div class="bc-section" id="booking-strong-fit"></div>
+      </div>
+
+      <!-- Referral Detection Tab -->
+      <div class="tab-panel" id="tab-referral">
+        <div class="bc-section" id="referral-questions"></div>
+      </div>
+
+      <!-- Offer Matching Tab -->
+      <div class="tab-panel" id="tab-matching">
+        <div class="bc-section" id="matching-guide"></div>
+      </div>
+
+      <!-- Referral Pitch Tab -->
+      <div class="tab-panel" id="tab-pitch">
+        <div id="pitch-empty-state" class="pitch-empty">
+          <div class="icon">✉️</div>
+          <h3>No pitch yet</h3>
+          <p>Fill in the Pitch Builder fields in the sidebar and click <strong>Generate Pitch</strong>.</p>
+        </div>
+        <div id="pitch-content" style="display:none">
+          <div class="bc-section" id="pitch-missing-inputs"></div>
+          <div class="bc-section" id="pitch-irp-pitch"></div>
+          <div class="bc-section" id="pitch-icp-list"></div>
+          <div class="bc-section" id="pitch-icp-pitch"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ── SSE stream reader ──────────────────────────────────
+async function readSSEStream(res, onEvent) {
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  function processLines(lines) {
+    let event = null;
+    for (const line of lines) {
+      if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
+      if (line.startsWith('data: ') && event) {
+        try {
+          const payload = JSON.parse(line.slice(6));
+          onEvent(event, payload);
+        } catch(e) { /* skip malformed line */ }
+        event = null;
+      }
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      // Flush any remaining buffer on stream end
+      if (buffer.trim()) processLines(buffer.split('\n'));
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // hold incomplete line
+    processLines(lines);
+  }
+}
+
+// ── State ──────────────────────────────────────────────
+let battlecard = null;
+let pitch = null;
+let offerCount = 0;
+
+
+// ── Helpers ────────────────────────────────────────────
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showError(msg) {
+  const banner = document.getElementById('error-banner');
+  banner.textContent = msg;
+  banner.style.display = 'block';
+}
+
+function clearError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+// ── Figma PDF file display ─────────────────────────────
+document.getElementById('figma-pdf').addEventListener('change', function() {
+  const zone = document.getElementById('figma-drop-zone');
+  const label = document.getElementById('figma-file-name');
+  if (this.files.length) {
+    label.textContent = this.files[0].name;
+    zone.classList.add('has-file');
+  } else {
+    label.textContent = 'Choose PDF…';
+    zone.classList.remove('has-file');
+  }
+});
+
+// ── Manual offer stack toggle ──────────────────────────
+document.getElementById('offer-toggle').addEventListener('change', function() {
+  const section = document.getElementById('offer-stack-section');
+  if (this.checked) {
+    section.style.display = 'flex';
+    if (!document.querySelector('.offer-item')) addOffer();
+  } else {
+    section.style.display = 'none';
+  }
+});
+
+// ── Buyer profile toggle ───────────────────────────────
+document.getElementById('buyer-toggle').addEventListener('change', function() {
+  document.getElementById('buyer-profile-section').style.display = this.checked ? 'flex' : 'none';
+});
+
+// ── ICP tab toggle ─────────────────────────────────────
+document.getElementById('icp-toggle').addEventListener('change', function() {
+  document.getElementById('tab-btn-icp').style.display = this.checked ? '' : 'none';
+  if (!this.checked) {
+    // If ICP tab is active, switch back to IRP
+    if (document.getElementById('tab-btn-icp').classList.contains('active')) {
+      document.querySelectorAll('.tab-btn')[0].click();
+    }
+  }
+});
+
+// ── Offer blocks ───────────────────────────────────────
+function addOffer(data = {}) {
+  offerCount++;
+  const list = document.getElementById('offers-list');
+  const item = document.createElement('div');
+  item.className = 'offer-item';
+  item.innerHTML = `
+    <button class="remove-offer" title="Remove offer">×</button>
+    <div class="offer-label">Offer Name</div>
+    <input type="text" placeholder="e.g. VIP Day" data-field="name" value="${esc(data.name||'')}" />
+    <div class="offer-label">Format</div>
+    <input type="text" placeholder="e.g. 1-day intensive, group program…" data-field="format" value="${esc(data.format||'')}" />
+    <div class="offer-label">Price</div>
+    <input type="text" placeholder="e.g. $5,000 / $997/mo" data-field="price" value="${esc(data.price||'')}" />
+    <div class="offer-label">Transformation</div>
+    <input type="text" placeholder="What the client achieves" data-field="transformation" value="${esc(data.transformation||'')}" />
+  `;
+  item.querySelector('.remove-offer').addEventListener('click', () => item.remove());
+  list.appendChild(item);
+}
+
+document.getElementById('btn-add-offer').addEventListener('click', () => addOffer());
+
+function getOffers() {
+  return Array.from(document.querySelectorAll('.offer-item')).map(el => ({
+    name: el.querySelector('[data-field=name]').value,
+    format: el.querySelector('[data-field=format]').value,
+    price: el.querySelector('[data-field=price]').value,
+    transformation: el.querySelector('[data-field=transformation]').value,
+  })).filter(o => o.name || o.transformation);
+}
+
+// ── Tabs ───────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Generate ───────────────────────────────────────────
+document.getElementById('btn-generate').addEventListener('click', async () => {
+  clearError();
+
+  const btn = document.getElementById('btn-generate');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating…';
+
+  const progressWrap = document.getElementById('progress-bar-wrap');
+  const progressBar = document.getElementById('progress-bar');
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '5%';
+
+  try {
+    const fd = new FormData();
+    fd.append('clientName', document.getElementById('client-name').value.trim());
+    fd.append('podcastName', document.getElementById('podcast-name').value.trim());
+    fd.append('niche', document.getElementById('niche').value.trim());
+    fd.append('geography', document.getElementById('geography').value.trim() || 'North America');
+    fd.append('idealBuyer', document.getElementById('buyer-toggle').checked ? document.getElementById('ideal-buyer').value.trim() : '');
+    fd.append('referralPartners', document.getElementById('buyer-toggle').checked ? document.getElementById('referral-partners').value.trim() : '');
+    fd.append('transcript', document.getElementById('transcript-input').value.trim());
+    fd.append('icpListNeeded', document.getElementById('icp-toggle').checked);
+    fd.append('offers', JSON.stringify(document.getElementById('offer-toggle').checked ? getOffers() : []));
+
+    const pdfFile = document.getElementById('figma-pdf').files[0];
+    if (pdfFile) fd.append('figmaPdf', pdfFile);
+
+    const res = await fetch('/api/generate', { method: 'POST', body: fd });
+    await readSSEStream(res, (event, payload) => {
+      if (event === 'progress') {
+        progressBar.style.width = Math.min(5 + payload.tokens * 0.4, 90) + '%';
+      } else if (event === 'done') {
+        progressBar.style.width = '100%';
+        battlecard = payload.battlecard;
+      } else if (event === 'error') {
+        throw new Error(payload.error);
+      }
+    });
+
+    if (!battlecard) throw new Error('No battlecard received');
+
+    renderBattlecard(battlecard);
+    document.getElementById('btn-export-pdf').disabled = false;
+    document.getElementById('empty-state').style.display = 'none';
+    document.querySelectorAll('.tab-btn')[0].click();
+
+    // ── Auto-generate pitch if toggle is on ──
+    if (document.getElementById('pitch-builder-toggle').checked) {
+      btn.textContent = 'Generating Pitch…';
+      progressBar.style.width = '5%';
+      progressWrap.style.display = 'block';
+      await generatePitchFlow(battlecard);
+    }
+
+  } catch (err) {
+    showError('Generation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate Battlecard';
+    setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '5%'; }, 800);
+  }
+});
+
+async function generatePitchFlow(bc) {
+  const payload = {
+    pitchMode,
+    hostName:    document.getElementById('client-name').value.trim(),
+    podcastName: document.getElementById('podcast-name').value.trim(),
+    niche:       document.getElementById('niche').value.trim(),
+    geography:   document.getElementById('geography').value.trim() || 'North America',
+    whatYouWant:        pitchMode === 'manual' ? document.getElementById('what-you-want').value.trim() : '',
+    whatYouGive:        pitchMode === 'manual' ? document.getElementById('what-you-give').value.trim() : '',
+    howYouMakeItHappen: pitchMode === 'manual' ? document.getElementById('how-urgency').value.trim() : '',
+    fathomTranscript: '',
+    icpRequested: false,
+    offerStack: bc?.offerStack || [],
+    irpList:    bc?.irpList || {},
+    idealClientDescription: document.getElementById('buyer-toggle').checked
+      ? document.getElementById('ideal-buyer').value.trim() : '',
+  };
+
+  const progressBar = document.getElementById('progress-bar');
+  const res = await fetch('/api/generate-pitch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  await readSSEStream(res, (event, data) => {
+    if (event === 'progress') {
+      progressBar.style.width = Math.min(5 + data.tokens * 0.4, 90) + '%';
+    } else if (event === 'done') {
+      progressBar.style.width = '100%';
+      pitch = data.pitch;
+      renderPitch(pitch);
+    } else if (event === 'error') {
+      throw new Error(data.error);
+    }
+  });
+}
+
+// ── Render battlecard ──────────────────────────────────
+function renderBattlecard(bc) {
+  renderIRP(bc);
+  renderBooking(bc);
+  renderReferral(bc);
+  renderMatching(bc);
+
+  if (bc.icpList) renderICP(bc.icpList);
+
+  document.querySelectorAll('.tab-panel').forEach(p => { p.style.display = ''; });
+}
+
+function renderICP(icp) {
+  // Job Titles
+  const titles = icp.jobTitles || [];
+  let jobHtml = `<div class="bc-section-title">Job Titles</div><div class="tags-row">`;
+  jobHtml += titles.length ? titles.map(t => `<span class="tag-gold">${esc(t)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  jobHtml += '</div>';
+  setSection('icp-job-titles', jobHtml);
+
+  // Industry Tags
+  const industries = icp.industryTags || [];
+  let indHtml = `<div class="bc-section-title">Industry Tags</div><div class="tags-row">`;
+  indHtml += industries.length ? industries.map(t => `<span class="tag-neutral">${esc(t)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  indHtml += '</div>';
+  setSection('icp-industry', indHtml);
+
+  // Seniority Levels
+  const seniority = icp.seniorityLevels || [];
+  let senHtml = `<div class="bc-section-title">Seniority Levels</div>`;
+  if (seniority.length) {
+    senHtml += `<table class="seniority-table"><thead><tr><th>Level</th><th>Priority</th><th>Reason</th></tr></thead><tbody>`;
+    seniority.forEach(s => {
+      const p = (s.priority || '').toLowerCase();
+      const cls = p.includes('high') ? 'priority-high' : p.includes('med') ? 'priority-medium' : 'priority-low';
+      senHtml += `<tr><td>${esc(s.level)}</td><td><span class="priority-badge ${cls}">${esc(s.priority)}</span></td><td>${esc(s.reason)}</td></tr>`;
+    });
+    senHtml += '</tbody></table>';
+  } else {
+    senHtml += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+  }
+  setSection('icp-seniority', senHtml);
+
+  // Company Size
+  const cs = icp.companySize || {};
+  let csHtml = `<div class="bc-section-title">Company Size</div><div class="stat-cards-row">
+    <div class="stat-card"><div class="stat-card-label">Employees</div><div class="stat-card-value">${esc(cs.employeeRange || 'N/A')}</div></div>
+    <div class="stat-card"><div class="stat-card-label">Revenue</div><div class="stat-card-value">${esc(cs.revenueRange || 'N/A')}</div></div>
+  </div>`;
+  if (cs.rationale) csHtml += `<p style="font-size:12px;color:var(--brand-muted);line-height:1.5">${esc(cs.rationale)}</p>`;
+  setSection('icp-company-size', csHtml);
+
+  // Geography
+  const geo = icp.geography || {};
+  if (geo.primary) {
+    setSection('icp-geo', `<div class="bc-section-title">Geography</div><div class="bc-card"><div class="bc-card-title">${esc(geo.primary)}</div>${geo.notes ? `<div class="bc-card-body">${esc(geo.notes)}</div>` : ''}</div>`);
+  } else {
+    setSection('icp-geo', '');
+  }
+
+  // Keywords
+  const kw = icp.keywords || [];
+  let kwHtml = `<div class="bc-section-title">Keywords</div><div class="tags-row">`;
+  kwHtml += kw.length ? kw.map(k => `<span class="tag-warm">${esc(k)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  kwHtml += '</div>';
+  setSection('icp-keywords', kwHtml);
+
+  // Intent Signals
+  const intent = icp.intentSignals || [];
+  let intHtml = `<div class="bc-section-title">Intent Signals</div><div class="tags-row">`;
+  intHtml += intent.length ? intent.map(s => `<span class="tag-intent">${esc(s)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  intHtml += '</div>';
+  setSection('icp-intent', intHtml);
+
+  // Boolean String
+  const bool = icp.booleanString || '';
+  let boolHtml = `<div class="bc-section-title">Boolean Search String</div>
+    <div class="bool-box">
+      <button class="icp-copy-bool-btn" id="btn-copy-bool-icp">Copy</button>
+      <pre>${esc(bool || '(not generated)')}</pre>
+    </div>`;
+  setSection('icp-boolean', boolHtml);
+
+  document.querySelector('.icp-copy-bool-btn')?.addEventListener('click', function() {
+    navigator.clipboard.writeText(bool).then(() => {
+      this.textContent = 'Copied!';
+      setTimeout(() => this.textContent = 'Copy', 2000);
+    });
+  });
+}
+
+function setSection(id, html) {
+  document.getElementById(id).innerHTML = html;
+}
+
+function renderIRP(bc) {
+  const irp = bc.irpList || {};
+
+  // Offer Stack at top of IRP
+  const offers = bc.offerStack || [];
+  let offersHtml = `<div class="bc-section-title">Offer Stack</div>`;
+  if (offers.length) {
+    offers.forEach(o => {
+      offersHtml += `
+        <div class="bc-card">
+          <div class="bc-card-title">${esc(o.name)}</div>
+          <div class="bc-card-meta">${esc(o.format)} · ${esc(o.price)}</div>
+          <div class="bc-card-body">${esc(o.transformation)}</div>
+        </div>`;
+    });
+  } else {
+    offersHtml += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+  }
+  setSection('irp-offers', offersHtml);
+
+  // Job Titles
+  const titles = irp.jobTitles || [];
+  let jobHtml = `<div class="bc-section-title">Job Titles</div><div class="tags-row">`;
+  jobHtml += titles.length ? titles.map(t => `<span class="tag-gold">${esc(t)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  jobHtml += '</div>';
+  setSection('irp-job-titles', jobHtml);
+
+  // Industry Tags
+  const industries = irp.industryTags || [];
+  let indHtml = `<div class="bc-section-title">Industry Tags</div><div class="tags-row">`;
+  indHtml += industries.length ? industries.map(t => `<span class="tag-neutral">${esc(t)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  indHtml += '</div>';
+  setSection('irp-industry', indHtml);
+
+  // Seniority Levels
+  const seniority = irp.seniorityLevels || [];
+  let senHtml = `<div class="bc-section-title">Seniority Levels</div>`;
+  if (seniority.length) {
+    senHtml += `<table class="seniority-table"><thead><tr><th>Level</th><th>Priority</th><th>Reason</th></tr></thead><tbody>`;
+    seniority.forEach(s => {
+      const p = (s.priority || '').toLowerCase();
+      const cls = p.includes('high') ? 'priority-high' : p.includes('med') ? 'priority-medium' : 'priority-low';
+      senHtml += `<tr><td>${esc(s.level)}</td><td><span class="priority-badge ${cls}">${esc(s.priority)}</span></td><td>${esc(s.reason)}</td></tr>`;
+    });
+    senHtml += '</tbody></table>';
+  } else {
+    senHtml += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+  }
+  setSection('irp-seniority', senHtml);
+
+  // Company Size
+  const cs = irp.companySize || {};
+  let csHtml = `<div class="bc-section-title">Company Size</div><div class="stat-cards-row">
+    <div class="stat-card">
+      <div class="stat-card-label">Employees</div>
+      <div class="stat-card-value">${esc(cs.employeeRange || 'N/A')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Revenue</div>
+      <div class="stat-card-value">${esc(cs.revenueRange || 'N/A')}</div>
+    </div>
+  </div>`;
+  if (cs.rationale) csHtml += `<p style="font-size:12px;color:var(--brand-muted);line-height:1.5">${esc(cs.rationale)}</p>`;
+  setSection('irp-company-size', csHtml);
+
+  // Geography
+  const geo = irp.geography || {};
+  if (geo.primary) {
+    let geoHtml = `<div class="bc-section-title">Geography</div>
+      <div class="bc-card">
+        <div class="bc-card-title">${esc(geo.primary)}</div>
+        ${geo.notes ? `<div class="bc-card-body">${esc(geo.notes)}</div>` : ''}
+      </div>`;
+    setSection('irp-geo', geoHtml);
+  } else {
+    setSection('irp-geo', '');
+  }
+
+  // Keywords
+  const kw = irp.keywords || [];
+  let kwHtml = `<div class="bc-section-title">Keywords</div><div class="tags-row">`;
+  kwHtml += kw.length ? kw.map(k => `<span class="tag-warm">${esc(k)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  kwHtml += '</div>';
+  setSection('irp-keywords', kwHtml);
+
+  // Intent Signals
+  const intent = irp.intentSignals || [];
+  let intHtml = `<div class="bc-section-title">Intent Signals</div><div class="tags-row">`;
+  intHtml += intent.length ? intent.map(s => `<span class="tag-intent">${esc(s)}</span>`).join('') : '<span style="color:var(--brand-muted);font-size:13px">(none)</span>';
+  intHtml += '</div>';
+  setSection('irp-intent', intHtml);
+
+  // Boolean String
+  const bool = irp.booleanString || '';
+  let boolHtml = `<div class="bc-section-title">Boolean Search String</div>
+    <div class="bool-box">
+      <button id="btn-copy-bool">Copy</button>
+      <pre>${esc(bool || '(not generated)')}</pre>
+    </div>`;
+  setSection('irp-boolean', boolHtml);
+
+  document.getElementById('btn-copy-bool').addEventListener('click', () => {
+    navigator.clipboard.writeText(bool).then(() => {
+      const btn = document.getElementById('btn-copy-bool');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  });
+}
+
+function renderBooking(bc) {
+  const form = bc.bookingForm || {};
+  const questions = form.qualifyingQuestions || [];
+  const strongFit = form.strongFitSignals || [];
+
+  let qHtml = `<div class="bc-section-title">Qualifying Questions</div>`;
+  questions.forEach(q => {
+    qHtml += `<div class="bc-card">
+      <div class="bc-card-title">${esc(q.question)}</div>`;
+    if (q.disqualifyingAnswers && q.disqualifyingAnswers.length) {
+      qHtml += `<div class="dq-label">Disqualify if selected</div>`;
+      q.disqualifyingAnswers.forEach(a => {
+        qHtml += `<div class="dq-item">${esc(a)}</div>`;
+      });
+    }
+    qHtml += '</div>';
+  });
+  setSection('booking-questions', qHtml || '<p style="color:var(--brand-muted);font-size:13px">(none)</p>');
+
+  let sfHtml = `<div class="bc-section-title">Strong Fit Signals</div>`;
+  if (strongFit.length) {
+    strongFit.forEach(s => {
+      sfHtml += `<div class="strong-fit-item">${esc(s)}</div>`;
+    });
+  } else {
+    sfHtml += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+  }
+  setSection('booking-strong-fit', sfHtml);
+}
+
+function renderReferral(bc) {
+  const questions = bc.bookingForm?.referralDetectionQuestions || [];
+  let html = `<div class="bc-section-title">Referral Detection Questions</div>`;
+  if (questions.length) {
+    questions.forEach(q => {
+      html += `<div class="bc-card">
+        <div class="bc-card-title">${esc(q.question)}</div>
+        <div class="options-list">
+          ${(q.options || []).map(o => `<div class="option-item">${esc(o)}</div>`).join('')}
+        </div>
+        ${q.signalNote ? `<div class="signal-note">${esc(q.signalNote)}</div>` : ''}
+      </div>`;
+    });
+  } else {
+    html += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+  }
+  setSection('referral-questions', html);
+}
+
+function renderMatching(bc) {
+  const guide = bc.offerMatchingGuide || [];
+  let html = `<div class="bc-section-title">Offer Matching Guide</div>`;
+  if (guide.length) {
+    guide.forEach(entry => {
+      html += `<div class="bc-card">
+        <div class="bc-card-title">${esc(entry.partnerType)}</div>
+        <div class="lead-offer-label">${esc(entry.leadOffer)}</div>
+        <div class="bc-card-body">${esc(entry.positioningAngle)}</div>
+        <span class="rel-badge">${esc(entry.relationshipType)}</span>
+      </div>`;
+    });
+  } else {
+    html += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+  }
+  setSection('matching-guide', html);
+}
+
+// ── PDF Export ─────────────────────────────────────────
+document.getElementById('btn-export-pdf').addEventListener('click', async () => {
+  if (!battlecard) return;
+  const btn = document.getElementById('btn-export-pdf');
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/export-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ battlecard, pitch }),
+    });
+    if (!res.ok) throw new Error('PDF generation failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const slug = (battlecard.meta?.clientName || 'battlecard').toLowerCase().replace(/\s+/g, '-');
+    a.href = url;
+    a.download = `${slug}-battlecard.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showError('PDF export failed: ' + err.message);
+  } finally {
+    btn.textContent = 'Export PDF';
+    btn.disabled = false;
+  }
+});
+
+// ── Pitch builder master toggle ────────────────────────
+document.getElementById('pitch-builder-toggle').addEventListener('change', function() {
+  document.getElementById('pitch-builder-section').style.display = this.checked ? 'flex' : 'none';
+});
+
+// ── Pitch mode selector ────────────────────────────────
+const MODE_HINTS = {
+  ai:     'Claude infers everything from the battlecard and transcript.',
+  manual: 'Fill in the three pitch questions yourself for full control.',
+};
+
+let pitchMode = 'ai';
+
+document.querySelectorAll('.pitch-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pitch-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pitchMode = btn.dataset.mode;
+    document.getElementById('pitch-mode-hint').textContent = MODE_HINTS[pitchMode];
+    document.getElementById('pitch-manual-section').style.display = pitchMode === 'manual' ? 'flex' : 'none';
+  });
+});
+
+
+
+// ── Render Pitch ───────────────────────────────────────
+function renderPitch(p) {
+  document.getElementById('pitch-empty-state').style.display = 'none';
+  document.getElementById('pitch-content').style.display = 'block';
+
+  // Missing inputs
+  const missingEl = document.getElementById('pitch-missing-inputs');
+  if (p.missingInputs && p.missingInputs.length) {
+    let html = `<div class="bc-section-title">Missing Inputs — Provide These to Generate Pitch</div>`;
+    p.missingInputs.forEach(m => {
+      html += `<div class="missing-input-item">${esc(m)}</div>`;
+    });
+    missingEl.innerHTML = html;
+  } else {
+    missingEl.innerHTML = '';
+  }
+
+  // IRP Pitch
+  const irpEl = document.getElementById('pitch-irp-pitch');
+  if (p.irpReferralPitch) {
+    const irp = p.irpReferralPitch;
+    const steps = [
+      { label: '1 · Transition Line',          body: irp.transitionLine },
+      { label: '2 · Synergy Observation',       body: irp.synergyObservation },
+      { label: '3 · The Offer Frame',           body: irp.offerFrame },
+      { label: '4 · The Ask',                   body: irp.theAsk },
+      { label: '5 · The Free Give',             body: irp.theFreeGive },
+      { label: '6 · Urgency Close',             body: irp.urgencyClose },
+      { label: '7 · Soft Close',                body: irp.softClose },
+    ];
+    let html = `<div class="bc-section-title">IRP Referral Pitch — Post-Episode Script</div>`;
+    steps.filter(s => s.body).forEach(s => {
+      html += `<div class="pitch-step-card">
+        <div class="pitch-step-label">${esc(s.label)}</div>
+        <div class="pitch-step-body">${esc(s.body)}</div>
+      </div>`;
+    });
+    irpEl.innerHTML = html;
+  } else {
+    irpEl.innerHTML = '';
+  }
+
+  // ICP List
+  const icpListEl = document.getElementById('pitch-icp-list');
+  if (p.icpList) {
+    const icp = p.icpList;
+    let html = `<div class="bc-section-title">ICP List — Ideal Client Profile</div>`;
+
+    html += `<div class="bc-card">
+      <div class="bc-card-title">Job Titles</div>
+      <div class="tags-row">${(icp.jobTitles||[]).map(t=>`<span class="tag-gold">${esc(t)}</span>`).join('')}</div>
+    </div>`;
+
+    html += `<div class="bc-card">
+      <div class="bc-card-meta">Industry Tags</div>
+      <div class="tags-row">${(icp.industryTags||[]).map(t=>`<span class="tag-neutral">${esc(t)}</span>`).join('')}</div>
+    </div>`;
+
+    html += `<div class="stat-cards-row">
+      <div class="stat-card"><div class="stat-card-label">Company Size</div><div class="stat-card-value">${esc(icp.companySize||'N/A')}</div></div>
+      <div class="stat-card"><div class="stat-card-label">Revenue Range</div><div class="stat-card-value">${esc(icp.revenueRange||'N/A')}</div></div>
+    </div>`;
+
+    html += `<div class="bc-card">
+      <div class="bc-card-meta">Keywords</div>
+      <div class="tags-row">${(icp.keywords||[]).map(k=>`<span class="tag-warm">${esc(k)}</span>`).join('')}</div>
+    </div>`;
+
+    html += `<div class="bc-card">
+      <div class="bc-card-meta">Intent Signals</div>
+      <div class="tags-row">${(icp.intentSignals||[]).map(s=>`<span class="tag-intent">${esc(s)}</span>`).join('')}</div>
+    </div>`;
+
+    if (icp.booleanString) {
+      html += `<div class="bool-box" style="margin-top:6px">
+        <pre>${esc(icp.booleanString)}</pre>
+      </div>`;
+    }
+
+    icpListEl.innerHTML = html;
+  } else {
+    icpListEl.innerHTML = '';
+  }
+
+  // ICP Sales Pitch
+  const icpPitchEl = document.getElementById('pitch-icp-pitch');
+  if (p.icpSalesPitch) {
+    const icp = p.icpSalesPitch;
+    const steps = [
+      { label: '1 · Transition Line',           body: icp.transitionLine },
+      { label: '2 · Reflection & Validation',   body: icp.reflectionValidation },
+      { label: '3 · The Problem Bridge',        body: icp.problemBridge },
+      { label: '4 · The Offer Invitation',      body: icp.offerInvitation },
+      { label: '5 · The Next Step',             body: icp.nextStep },
+      { label: '6 · Soft Close',                body: icp.softClose },
+    ];
+    let html = `<div class="bc-section-title">ICP Sales Pitch — Post-Episode Script</div>`;
+    steps.filter(s => s.body).forEach(s => {
+      html += `<div class="pitch-step-card">
+        <div class="pitch-step-label">${esc(s.label)}</div>
+        <div class="pitch-step-body">${esc(s.body)}</div>
+      </div>`;
+    });
+    icpPitchEl.innerHTML = html;
+  } else {
+    icpPitchEl.innerHTML = '';
+  }
+}
+</script>
+</body>
+</html>
