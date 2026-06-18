@@ -1373,10 +1373,10 @@ async function readSSEStream(res, onEvent) {
     for (const line of lines) {
       if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
       if (line.startsWith('data: ') && event) {
-        try {
-          const payload = JSON.parse(line.slice(6));
-          onEvent(event, payload);
-        } catch(e) { /* skip malformed line */ }
+        let payload;
+        try { payload = JSON.parse(line.slice(6)); }
+        catch(e) { event = null; continue; } // skip only malformed JSON lines
+        onEvent(event, payload); // let real errors (e.g. error events) propagate
         event = null;
       }
     }

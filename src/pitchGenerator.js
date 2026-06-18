@@ -164,7 +164,7 @@ Generate the full pitch JSON now.
   let text = '';
   const stream = await client.messages.stream({
     model: 'claude-sonnet-4-5',
-    max_tokens: 4000,
+    max_tokens: 16000,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
   });
