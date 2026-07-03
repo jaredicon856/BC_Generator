@@ -1,102 +1,6 @@
 const client = require('./anthropic');
 const { parseJSON } = require('./utils');
-
-const SYSTEM_PROMPT = `You are a Podcast Guest Prospecting and Booking Intelligence Strategist.
-Return ONLY valid JSON. No markdown. No preamble. No explanation outside the JSON.
-
-PRE-PROCESSING:
-Analyze the full input before generating any output.
-If a call transcript is provided, treat it as the primary source of truth.
-If a Figma PDF is provided, extract the offer stack directly from it — names, formats, prices, and transformations as written.
-Extract offer stack, buyer signals, referral partner types, and disqualifiers
-directly from what the host said. Do not override their words with assumptions.
-If no transcript, derive everything from the structured inputs.
-
-Return this exact JSON structure:
-
-{
-  "meta": {
-    "clientName": "",
-    "podcastName": "",
-    "niche": "",
-    "geography": "",
-    "generatedAt": ""
-  },
-  "offerStack": [
-    {
-      "name": "",
-      "format": "",
-      "price": "",
-      "transformation": ""
-    }
-  ],
-  "irpList": {
-    "jobTitles": [],
-    "seniorityLevels": [
-      { "level": "", "priority": "", "reason": "" }
-    ],
-    "industryTags": [],
-    "companySize": {
-      "employeeRange": "",
-      "revenueRange": "",
-      "rationale": ""
-    },
-    "geography": {
-      "primary": "",
-      "notes": ""
-    },
-    "keywords": [],
-    "intentSignals": [],
-    "booleanString": ""
-  },
-  "bookingForm": {
-    "qualifyingQuestions": [
-      {
-        "question": "",
-        "disqualifyingAnswers": []
-      }
-    ],
-    "strongFitSignals": [],
-    "referralDetectionQuestions": [
-      {
-        "question": "",
-        "options": [],
-        "signalNote": ""
-      }
-    ]
-  },
-  "offerMatchingGuide": [
-    {
-      "partnerType": "",
-      "leadOffer": "",
-      "positioningAngle": "",
-      "relationshipType": ""
-    }
-  ],
-  "icpList": null
-}
-
-If icpListNeeded is true, populate icpList with this structure (these are the podcast host's IDEAL CLIENTS — potential buyers, not referral partners):
-{
-  "jobTitles": [],
-  "seniorityLevels": [
-    { "level": "", "priority": "", "reason": "" }
-  ],
-  "industryTags": [],
-  "companySize": {
-    "employeeRange": "",
-    "revenueRange": "",
-    "rationale": ""
-  },
-  "geography": {
-    "primary": "",
-    "notes": ""
-  },
-  "keywords": [],
-  "intentSignals": [],
-  "booleanString": ""
-}
-If icpListNeeded is false, set icpList to null.`;
+const { getConfig } = require('./prompts');
 
 async function generateBattlecard(inputs, onProgress) {
   const {
@@ -110,6 +14,7 @@ async function generateBattlecard(inputs, onProgress) {
     transcript,
     icpListNeeded,
     figmaPdf,
+    authorityDeck,
   } = inputs;
 
   const textContent = `
@@ -119,6 +24,9 @@ Niche / Topic Focus: ${niche || '(not provided)'}
 Geography: ${geography || 'North America'}
 ICP List Needed: ${icpListNeeded ? 'Yes' : 'No'}
 ${figmaPdf ? 'Figma PDF: attached — extract offer stack from it.' : ''}
+${authorityDeck ? `Client Authority Deck (Stage 1 output — use as authoritative context for this client's story, north star, ICP, and positioning):
+${authorityDeck}
+` : ''}
 
 ${(offers && offers.length) ? `Manual Offer Stack (use only if Figma PDF not provided or incomplete):
 ${offers.map((o, i) => `  ${i + 1}. Name: ${o.name} | Format: ${o.format} | Price: ${o.price} | Transformation: ${o.transformation}`).join('\n')}` : ''}
@@ -145,11 +53,13 @@ Generate the full battlecard JSON now. Set generatedAt to: ${new Date().toISOStr
       ]
     : textContent;
 
+  const cfg = getConfig('battlecard');
+
   let text = '';
   const stream = await client.messages.stream({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 4000,
-    system: SYSTEM_PROMPT,
+    model: cfg.model,
+    max_tokens: cfg.maxTokens,
+    system: cfg.system,
     messages: [{ role: 'user', content: userMessage }],
   });
 

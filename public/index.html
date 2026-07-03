@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Podcast Battlecard Generator — Project ICON</title>
+<title>ICON Strategy Guide — Project ICON</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -576,6 +576,147 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
+  /* Settings tab button — pushed to the far right, visually distinct */
+  .tab-btn-settings { margin-left: auto; }
+
+  /* Settings tab */
+  #settings-intro { margin-bottom: 24px; }
+  #settings-intro h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--brand-text);
+    margin: 0 0 6px;
+  }
+  #settings-intro p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--brand-muted);
+    max-width: 640px;
+  }
+  .settings-loading { font-size: 13px; color: var(--brand-muted); padding: 20px 0; }
+
+  .brain-group { margin: 30px 0 14px; }
+  .brain-group:first-child { margin-top: 4px; }
+  .brain-group-title {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--brand-text);
+    margin: 0 0 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--brand-border);
+  }
+  .brain-group-desc { font-size: 12.5px; color: var(--brand-muted); margin: 8px 0 0; max-width: 640px; }
+
+  .brain-card {
+    background: #fff;
+    border: 1px solid var(--brand-border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 22px;
+  }
+  .brain-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .brain-card-head h3 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--brand-text);
+    margin: 0;
+  }
+  .brain-modified-badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--brand-accent);
+    text-transform: uppercase;
+  }
+  .brain-desc { font-size: 12.5px; color: var(--brand-muted); margin: 2px 0 2px; }
+  .brain-powers { font-size: 11.5px; color: #999; margin: 0 0 14px; font-style: italic; }
+
+  .brain-field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+    margin: 12px 0 6px;
+  }
+  .brain-system {
+    width: 100%;
+    min-height: 320px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--brand-text);
+    background: #fbfaf7;
+    border: 1px solid var(--brand-border);
+    border-radius: 8px;
+    padding: 14px;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  .brain-system:focus { outline: none; border-color: var(--brand-accent); }
+  .brain-card-rules { padding: 16px 18px; background: #fbfaf7; }
+  .brain-rules { min-height: 150px; background: #fff; }
+  .brain-meta-row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; }
+  .brain-meta-row > div { display: flex; flex-direction: column; }
+  .brain-meta-row input {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--brand-text);
+    background: #fff;
+    border: 1px solid var(--brand-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+  .brain-meta-row input:focus { outline: none; border-color: var(--brand-accent); }
+  .brain-meta-row input#model { min-width: 220px; }
+  .brain-meta-row input.max-tokens { width: 120px; }
+
+  .brain-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .brain-save {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--brand-text);
+    border: none;
+    border-radius: 6px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .brain-save:hover { background: #000; }
+  .brain-save.saved { background: #2e7d32; }
+  .brain-reset {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--brand-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .brain-reset:hover { color: var(--brand-text); }
+  .brain-status { font-size: 12px; color: var(--brand-muted); }
+  .brain-status.error { color: #c62828; }
+
   /* Empty state */
   #empty-state {
     display: flex;
@@ -1050,6 +1191,193 @@
   #tab-content::-webkit-scrollbar-track { background: transparent; }
   #sidebar::-webkit-scrollbar-thumb,
   #tab-content::-webkit-scrollbar-thumb { background: var(--brand-border); border-radius: 3px; }
+
+  /* ── Stage switcher ─────────────────────────────────── */
+  #stage-switcher {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    background: var(--brand-primary-dark, #0D0D0D);
+    padding: 0 24px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(233,191,94,0.2);
+  }
+  .stage-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: rgba(255,255,255,0.55);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .stage-btn:hover { color: #fff; }
+  .stage-btn.active { color: var(--brand-accent); border-bottom-color: var(--brand-accent); }
+  .stage-btn .stage-num {
+    display: inline-block;
+    width: 18px; height: 18px; line-height: 18px;
+    text-align: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    font-size: 11px;
+    margin-right: 7px;
+  }
+  .stage-btn.active .stage-num { background: var(--brand-accent); color: var(--brand-primary-dark, #0D0D0D); }
+  .stage-btn-right { margin-left: auto; }
+
+  /* ── Views ──────────────────────────────────────────── */
+  #views { flex: 1; overflow: hidden; position: relative; }
+  .view { display: none; height: 100%; }
+  .view.active { display: flex; flex-direction: column; }
+  #view-strategy.active { display: flex; }
+  .view-scroll { flex: 1; overflow-y: auto; padding: 32px 40px 60px; }
+
+  /* ── Authority Deck wizard ──────────────────────────── */
+  .wizard { display: flex; flex-direction: column; height: 100%; }
+  .wizard-steps {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 16px 40px;
+    background: #fff;
+    border-bottom: 1px solid var(--brand-border);
+    flex-shrink: 0;
+  }
+  .wz-step {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--brand-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.5;
+  }
+  .wz-step .wz-dot {
+    width: 22px; height: 22px; line-height: 22px; text-align: center;
+    border-radius: 50%;
+    background: var(--brand-border);
+    color: #fff;
+    font-size: 12px;
+  }
+  .wz-step.active { opacity: 1; color: var(--brand-text); }
+  .wz-step.active .wz-dot { background: var(--brand-accent); color: var(--brand-primary-dark, #0D0D0D); }
+  .wz-step.done .wz-dot { background: var(--brand-accent-mid, #b9902f); }
+  .wz-sep { flex: 0 0 24px; height: 1px; background: var(--brand-border); }
+  .wizard-body { flex: 1; overflow-y: auto; padding: 28px 40px 60px; }
+  .wz-panel { display: none; max-width: 900px; }
+  .wz-panel.active { display: block; }
+  .wz-panel h2 { font-family: var(--font-display); font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+  .wz-hint { font-size: 13px; color: var(--brand-muted); margin-bottom: 22px; max-width: 620px; line-height: 1.5; }
+  .wz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .wz-grid .form-group label, .wz-field label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--brand-muted);
+    display: block; margin-bottom: 5px;
+  }
+  .wz-field { margin-bottom: 18px; }
+  .wz-panel input, .wz-panel select, .wz-panel textarea {
+    font-family: var(--font-body); font-size: 13px; color: var(--brand-text);
+    background: #fff; border: 1px solid var(--brand-border); border-radius: 6px; padding: 9px 11px;
+    width: 100%; box-sizing: border-box;
+  }
+  .wz-panel input:focus, .wz-panel select:focus, .wz-panel textarea:focus { outline: none; border-color: var(--brand-accent); }
+  #authority-transcript { min-height: 220px; resize: vertical; line-height: 1.5; }
+  .wz-req { color: #c62828; }
+
+  .wz-actions { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
+  .wz-btn {
+    font-family: var(--font-body); font-size: 13px; font-weight: 600;
+    background: var(--brand-text); color: #fff; border: none; border-radius: 6px;
+    padding: 11px 24px; cursor: pointer; transition: background 0.15s;
+  }
+  .wz-btn:hover:not(:disabled) { background: #000; }
+  .wz-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .wz-btn-ghost { background: none; color: var(--brand-muted); text-decoration: underline; padding: 11px 6px; }
+  .wz-btn-ghost:hover:not(:disabled) { background: none; color: var(--brand-text); }
+  .wz-status { font-size: 12.5px; color: var(--brand-muted); }
+  .wz-status.error { color: #c62828; }
+
+  /* Review step */
+  .wz-gate {
+    border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 18px; line-height: 1.5;
+  }
+  .wz-gate.warn { background: #fff8e6; border: 1px solid #e9bf5e; color: #7a5a12; }
+  .wz-gate.ok   { background: #eef7ee; border: 1px solid #9ccc9c; color: #2e5e2e; }
+  .wz-review-cols { display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: start; }
+  .wz-names { background: #fbfaf7; border: 1px solid var(--brand-border); border-radius: 8px; padding: 14px; }
+  .wz-names h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--brand-muted); margin-bottom: 4px; }
+  .wz-names p { font-size: 11.5px; color: var(--brand-muted); margin-bottom: 10px; line-height: 1.45; }
+  .wz-name-chip { font-size: 12.5px; color: var(--brand-text); padding: 5px 0; border-bottom: 1px dashed var(--brand-border); }
+  .wz-name-chip:last-child { border-bottom: none; }
+  #authority-json {
+    width: 100%; min-height: 460px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;
+    background: #fbfaf7; border: 1px solid var(--brand-border); border-radius: 8px; padding: 14px; resize: vertical; box-sizing: border-box;
+  }
+  #authority-json:focus { outline: none; border-color: var(--brand-accent); }
+
+  /* Deck step */
+  .deck-saved-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: #eef7ee; border: 1px solid #9ccc9c; color: #2e5e2e;
+    border-radius: 8px; padding: 10px 16px; font-size: 13px; margin-bottom: 18px;
+  }
+  .deck-doc {
+    background: #fff; border: 1px solid var(--brand-border); border-radius: 10px;
+    padding: 40px 48px; max-width: 860px; line-height: 1.6; color: var(--brand-text); font-size: 14px;
+  }
+  .deck-doc h1 { font-family: var(--font-display); font-size: 26px; margin: 4px 0 14px; }
+  .deck-doc h2 { font-family: var(--font-display); font-size: 20px; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--brand-border); }
+  .deck-doc h3 { font-size: 15px; font-weight: 700; margin: 18px 0 8px; letter-spacing: 0.3px; }
+  .deck-doc p { margin: 10px 0; }
+  .deck-doc ul { margin: 10px 0 10px 22px; }
+  .deck-doc li { margin: 4px 0; }
+  .deck-doc hr { border: none; border-top: 2px solid var(--brand-accent); margin: 24px 0; }
+  .deck-doc table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+  .deck-doc th, .deck-doc td { border: 1px solid var(--brand-border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  .deck-doc th { background: #faf7ef; font-weight: 700; }
+  .deck-doc strong { font-weight: 700; }
+  .deck-needs { background: #fdeaea; color: #c62828; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+
+  /* ── Memory bank ────────────────────────────────────── */
+  #view-memory h2 { font-family: var(--font-display); font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+  .memory-hint { font-size: 13px; color: var(--brand-muted); margin-bottom: 24px; }
+  .memory-list { display: flex; flex-direction: column; gap: 12px; max-width: 820px; }
+  .memory-card {
+    display: flex; align-items: center; gap: 16px;
+    background: #fff; border: 1px solid var(--brand-border); border-radius: 10px; padding: 16px 20px;
+  }
+  .memory-card .mc-main { flex: 1; }
+  .memory-card .mc-name { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+  .memory-card .mc-meta { font-size: 12px; color: var(--brand-muted); margin-top: 3px; }
+  .memory-card .mc-badge {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+    color: var(--brand-accent-mid, #b9902f); background: #faf3e2; border-radius: 4px; padding: 3px 8px;
+  }
+  .mc-btn {
+    font-family: var(--font-body); font-size: 12.5px; font-weight: 600; cursor: pointer;
+    background: none; border: 1px solid var(--brand-border); border-radius: 6px; padding: 7px 13px; color: var(--brand-text);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .mc-btn:hover { border-color: var(--brand-accent); }
+  .mc-btn.danger { color: #c62828; }
+  .mc-btn.danger:hover { border-color: #c62828; }
+  .memory-empty { font-size: 13px; color: var(--brand-muted); padding: 30px 0; }
+
+  /* ── Strategy: Authority Deck banner ────────────────── */
+  #deck-banner { border-radius: 8px; padding: 11px 14px; font-size: 12.5px; line-height: 1.5; }
+  #deck-banner.found { background: #eef7ee; border: 1px solid #9ccc9c; color: #2e5e2e; }
+  #deck-banner.missing { background: #fff8e6; border: 1px solid #e9bf5e; color: #7a5a12; }
+  #deck-banner .db-title { font-weight: 700; display: block; margin-bottom: 2px; }
+  #deck-banner button {
+    font-family: var(--font-body); font-size: 11.5px; font-weight: 600; cursor: pointer;
+    background: none; border: none; text-decoration: underline; color: inherit; padding: 0; margin-top: 4px;
+  }
+  #deck-upload { margin-top: 8px; min-height: 70px; width: 100%; box-sizing: border-box;
+    font-family: var(--font-body); font-size: 12px; border: 1px solid var(--brand-border); border-radius: 6px; padding: 8px; }
 </style>
 </head>
 <body>
@@ -1058,12 +1386,125 @@
 <header id="app-header">
   <div class="brand">
     <span class="brand-name">Project ICON</span>
-    <span class="brand-subtitle">Podcast Battlecard Generator</span>
+    <span class="brand-subtitle">Client Strategy Studio</span>
   </div>
   <button id="btn-export-pdf" disabled>Export PDF</button>
 </header>
 
-<!-- ── Layout ─────────────────────────────────────────── -->
+<!-- ── Stage switcher ─────────────────────────────────── -->
+<nav id="stage-switcher">
+  <button class="stage-btn active" data-view="authority"><span class="stage-num">1</span>Authority Deck</button>
+  <button class="stage-btn" data-view="strategy"><span class="stage-num">2</span>Strategy Guide</button>
+  <button class="stage-btn stage-btn-right" data-view="memory">Memory Bank</button>
+  <button class="stage-btn" data-view="settings">⚙ Settings</button>
+</nav>
+
+<div id="views">
+
+  <!-- ═══════════ STAGE 1 — AUTHORITY DECK ═══════════ -->
+  <section id="view-authority" class="view active">
+    <div class="wizard">
+      <div class="wizard-steps">
+        <span class="wz-step active" data-step="1"><span class="wz-dot">1</span>Inputs</span>
+        <span class="wz-sep"></span>
+        <span class="wz-step" data-step="2"><span class="wz-dot">2</span>Review &amp; Correct</span>
+        <span class="wz-sep"></span>
+        <span class="wz-step" data-step="3"><span class="wz-dot">3</span>Deck</span>
+      </div>
+      <div class="wizard-body">
+
+        <!-- Step 1 — Inputs -->
+        <div class="wz-panel active" id="wz-1">
+          <h2>New Authority Deck</h2>
+          <p class="wz-hint">Built from Strategy Call #1. Paste the Fathom transcript below — it's the source of truth. The client name and email are used to save this deck to the Memory Bank so Stage 2 can pull it later.</p>
+          <div class="wz-grid">
+            <div class="form-group">
+              <label>Client Name <span class="wz-req">*</span></label>
+              <input type="text" id="authority-client-name" placeholder="Dr. Maria Chen" />
+            </div>
+            <div class="form-group">
+              <label>Client Email <span class="wz-req">*</span></label>
+              <input type="email" id="authority-client-email" placeholder="maria@chenclinic.com" />
+            </div>
+            <div class="form-group">
+              <label>Location <span style="opacity:.5;text-transform:none;letter-spacing:0">(city / region)</span></label>
+              <input type="text" id="authority-location" placeholder="Austin, TX" />
+            </div>
+            <div class="form-group">
+              <label>Presented (Month Year)</label>
+              <input type="text" id="authority-presented" placeholder="July 2026" />
+            </div>
+            <div class="form-group">
+              <label>Target Launch / Timeline <span style="opacity:.5;text-transform:none;letter-spacing:0">(feeds roadmap dates)</span></label>
+              <input type="text" id="authority-timeline" placeholder="Launch in Q4 2026" />
+            </div>
+          </div>
+          <div class="wz-field">
+            <label>Next Call — Day / Time / Timezone <span style="opacity:.5;text-transform:none;letter-spacing:0">(feeds the call agenda)</span></label>
+            <input type="text" id="authority-nextcall" placeholder="Thursday 2:00 PM ET" />
+          </div>
+          <div class="wz-field">
+            <label>Fathom Call Transcript <span class="wz-req">*</span></label>
+            <textarea id="authority-transcript" placeholder="Paste the full Fathom transcript from Strategy Call #1 here…"></textarea>
+          </div>
+          <div class="wz-actions">
+            <button class="wz-btn" id="btn-extract">Extract →</button>
+            <span class="wz-status" id="authority-extract-status"></span>
+          </div>
+        </div>
+
+        <!-- Step 2 — Review & Correct -->
+        <div class="wz-panel" id="wz-2">
+          <h2>Review &amp; Correct</h2>
+          <p class="wz-hint">Fathom garbles proper nouns — verify every name below and fix anything wrong directly in the JSON. Anything the call didn't cover is marked <strong>TBD</strong>; fill in what you can — the AI drafts the rest, and any remaining TBDs read as clean placeholders in the deck (never a red flag).</p>
+          <div class="wz-gate" id="authority-gate"></div>
+          <div class="wz-review-cols">
+            <div class="wz-names">
+              <h4>Names to verify</h4>
+              <p>Every proper noun the AI pulled from the transcript. Scan for garbles, then correct them in the JSON.</p>
+              <div id="authority-names"></div>
+            </div>
+            <div>
+              <label class="wz-field" style="display:block;margin-bottom:6px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--brand-muted)">Extraction JSON <span id="authority-needs"></span></label>
+              <textarea id="authority-json" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div class="wz-actions">
+            <button class="wz-btn" id="btn-generate-deck">Generate Deck →</button>
+            <button class="wz-btn wz-btn-ghost" id="btn-back-1">← Back to inputs</button>
+            <span class="wz-status" id="authority-gen-status"></span>
+          </div>
+        </div>
+
+        <!-- Step 3 — Deck -->
+        <div class="wz-panel" id="wz-3">
+          <div class="deck-saved-bar" id="deck-saved-bar"></div>
+          <div class="wz-actions" style="margin-top:0;margin-bottom:18px">
+            <button class="wz-btn" id="btn-use-in-strategy">Use in Strategy Guide →</button>
+            <button class="wz-btn wz-btn-ghost" id="btn-download-pdf">Download PDF</button>
+            <button class="wz-btn wz-btn-ghost" id="btn-download-doc">Download .doc</button>
+            <button class="wz-btn wz-btn-ghost" id="btn-download-md">Download .md</button>
+            <button class="wz-btn wz-btn-ghost" id="btn-copy-md">Copy markdown</button>
+            <button class="wz-btn wz-btn-ghost" id="btn-new-deck">Start new deck</button>
+          </div>
+          <div class="deck-doc" id="authority-deck-doc"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ MEMORY BANK ═══════════ -->
+  <section id="view-memory" class="view">
+    <div class="view-scroll">
+      <h2>Memory Bank</h2>
+      <p class="memory-hint">Every Authority Deck you generate is saved here, keyed by client email + name. Stage 2 pulls a client's deck automatically to build their Strategy Guide.</p>
+      <div class="memory-list" id="memory-list"><div class="memory-empty">Loading…</div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ STAGE 2 — STRATEGY GUIDE ═══════════ -->
+  <section id="view-strategy" class="view">
 <div id="layout">
 
   <!-- ── Sidebar ─────────────────────────────────────── -->
@@ -1075,6 +1516,21 @@
       <label>Client Name</label>
       <input type="text" id="client-name" placeholder="Jane Smith" />
     </div>
+
+    <div class="form-group">
+      <label>Client Email</label>
+      <input type="email" id="client-email" placeholder="jane@email.com" />
+    </div>
+
+    <div class="divider"></div>
+    <div class="form-section-title">Authority Deck (Stage 1)</div>
+    <div id="deck-banner" class="missing">
+      <span class="db-title">Checking Memory Bank…</span>
+      Enter the client's name or email to pull their saved Authority Deck.
+    </div>
+    <textarea id="deck-upload" placeholder="No saved deck? Paste the client's Authority Deck here to use it as context." style="display:none"></textarea>
+
+    <div class="divider"></div>
 
     <div class="form-group">
       <label>Podcast Name</label>
@@ -1291,10 +1747,24 @@
           <div class="bc-section" id="pitch-icp-pitch"></div>
         </div>
       </div>
+
     </div>
   </main>
+  </div><!-- /#layout -->
+  </section><!-- /#view-strategy -->
 
-</div>
+  <!-- ═══ Settings (global) ═══ -->
+  <section id="view-settings" class="view">
+    <div class="view-scroll">
+      <div id="settings-intro">
+        <h2>Prompt Settings</h2>
+        <p>This is the AI logic behind every tab in both stages. Each group shares a base prompt plus editable rule blocks. Edit any block and click <strong>Save</strong> — changes take effect on the next Generate and persist across restarts. Use <strong>Reset to Default</strong> on any block to restore the original.</p>
+      </div>
+      <div id="settings-list"><div class="settings-loading">Loading…</div></div>
+    </div>
+  </section>
+
+</div><!-- /#views -->
 
 <script>
 // ── Loading overlay ────────────────────────────────────
@@ -1496,8 +1966,578 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+
+    const isSettings = btn.dataset.tab === 'settings';
+    // The pre-generation empty state must not bleed through the Settings tab.
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.style.display = (isSettings || battlecard) ? 'none' : '';
+    if (isSettings) loadSettings();
   });
 });
+
+// ── Settings tab (prompt editor) ───────────────────────
+let settingsLoaded = false;
+
+async function loadSettings(force) {
+  if (settingsLoaded && !force) return;
+  const list = document.getElementById('settings-list');
+  list.innerHTML = '<div class="settings-loading">Loading…</div>';
+  try {
+    const res = await fetch('/api/prompts');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to load');
+    list.innerHTML = '';
+    data.groups.forEach(group => {
+      const header = document.createElement('div');
+      header.className = 'brain-group';
+      header.innerHTML = `<h2 class="brain-group-title">${group.title}</h2>
+        <p class="brain-group-desc">${group.description}</p>`;
+      list.appendChild(header);
+      group.cards.forEach(card => list.appendChild(renderCard(card)));
+    });
+    settingsLoaded = true;
+  } catch (err) {
+    list.innerHTML = '<div class="settings-loading">Could not load settings: ' + err.message + '</div>';
+  }
+}
+
+function renderCard(c) {
+  const card = document.createElement('div');
+  card.className = 'brain-card' + (c.kind === 'rules' ? ' brain-card-rules' : '');
+  card.dataset.id = c.id;
+
+  const badge = c.modified ? '<span class="brain-modified-badge">Modified</span>' : '';
+  const fieldLabel = c.kind === 'rules' ? 'Tab rules' : 'System prompt';
+
+  let settingsRow = '';
+  if ('model' in c) {
+    settingsRow = `
+    <div class="brain-meta-row">
+      <div>
+        <label class="brain-field-label" style="margin-top:0">Model</label>
+        <input type="text" class="model" spellcheck="false">
+      </div>
+      <div>
+        <label class="brain-field-label" style="margin-top:0">Max tokens</label>
+        <input type="number" class="max-tokens" min="256" max="16000">
+      </div>
+    </div>`;
+  }
+
+  card.innerHTML = `
+    <div class="brain-card-head">
+      <h3>${c.label}</h3>
+      ${badge}
+    </div>
+    <p class="brain-desc">${c.note}</p>
+
+    <label class="brain-field-label">${fieldLabel}</label>
+    <textarea class="brain-system ${c.kind === 'rules' ? 'brain-rules' : ''}" spellcheck="false"></textarea>
+    ${settingsRow}
+
+    <div class="brain-actions">
+      <button class="brain-save">Save changes</button>
+      <button class="brain-reset">Reset to Default</button>
+      <span class="brain-status"></span>
+    </div>
+  `;
+  // Set values via property to avoid HTML-escaping issues with prompt bodies.
+  card.querySelector('.brain-system').value = c.value;
+  if ('model' in c) {
+    card.querySelector('.model').value      = c.model;
+    card.querySelector('.max-tokens').value = c.maxTokens;
+  }
+  card.querySelector('.brain-save').addEventListener('click', () => saveCard(card));
+  card.querySelector('.brain-reset').addEventListener('click', () => resetCard(card, c.label));
+  return card;
+}
+
+function brainStatus(card, msg, isError) {
+  const el = card.querySelector('.brain-status');
+  el.textContent = msg || '';
+  el.classList.toggle('error', !!isError);
+}
+
+function applyCard(card, c) {
+  card.querySelector('.brain-system').value = c.value;
+  if ('model' in c && card.querySelector('.model')) {
+    card.querySelector('.model').value      = c.model;
+    card.querySelector('.max-tokens').value = c.maxTokens;
+  }
+  updateModifiedBadge(card, c.modified);
+}
+
+async function saveCard(card) {
+  const id   = card.dataset.id;
+  const save = card.querySelector('.brain-save');
+  const body = { text: card.querySelector('.brain-system').value };
+  if (card.querySelector('.model')) {
+    body.model     = card.querySelector('.model').value.trim();
+    body.maxTokens = card.querySelector('.max-tokens').value;
+  }
+  save.disabled = true;
+  brainStatus(card, 'Saving…');
+  try {
+    const res = await fetch('/api/prompts/card/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Save failed');
+    save.classList.add('saved');
+    save.textContent = 'Saved ✓';
+    brainStatus(card, '');
+    updateModifiedBadge(card, data.card.modified);
+    setTimeout(() => { save.classList.remove('saved'); save.textContent = 'Save changes'; }, 1800);
+  } catch (err) {
+    brainStatus(card, err.message, true);
+  } finally {
+    save.disabled = false;
+  }
+}
+
+async function resetCard(card, label) {
+  if (!confirm('Reset "' + label + '" back to its default? This discards your edits.')) return;
+  const id = card.dataset.id;
+  brainStatus(card, 'Resetting…');
+  try {
+    const res  = await fetch('/api/prompts/card/' + id + '/reset', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Reset failed');
+    applyCard(card, data.card);
+    brainStatus(card, 'Reset to default.');
+    setTimeout(() => brainStatus(card, ''), 1800);
+  } catch (err) {
+    brainStatus(card, err.message, true);
+  }
+}
+
+function updateModifiedBadge(card, modified) {
+  const head = card.querySelector('.brain-card-head');
+  let badge = head.querySelector('.brain-modified-badge');
+  if (modified && !badge) {
+    badge = document.createElement('span');
+    badge.className = 'brain-modified-badge';
+    badge.textContent = 'Modified';
+    head.appendChild(badge);
+  } else if (!modified && badge) {
+    badge.remove();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  STAGE SWITCHER
+// ══════════════════════════════════════════════════════
+function switchView(name) {
+  document.querySelectorAll('.stage-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  // Export PDF lives in the header but only applies to the Strategy Guide.
+  document.getElementById('btn-export-pdf').style.display = name === 'strategy' ? '' : 'none';
+  if (name === 'settings') loadSettings();
+  if (name === 'memory')   loadMemory();
+  if (name === 'strategy') refreshDeckBanner();
+}
+document.querySelectorAll('.stage-btn').forEach(btn =>
+  btn.addEventListener('click', () => switchView(btn.dataset.view)));
+document.getElementById('btn-export-pdf').style.display = 'none'; // default view is Authority
+
+// ══════════════════════════════════════════════════════
+//  MARKDOWN → HTML (minimal, self-contained)
+// ══════════════════════════════════════════════════════
+function mdToHtml(md) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inline = s => esc(s)
+    .replace(/\*?\*?\[NEEDS INPUT\]\*?\*?/gi, 'TBD')  // never show a red "needs input" flag to a client
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const lines = (md || '').replace(/\r/g, '').split('\n');
+  let html = '', i = 0;
+  const flushList = (items) => items.length ? '<ul>' + items.map(x => '<li>' + inline(x) + '</li>').join('') + '</ul>' : '';
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { html += '<hr>'; i++; continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { const n = h[1].length; html += `<h${n}>${inline(h[2])}</h${n}>`; i++; continue; }
+    // table block
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(lines[i]); i++; }
+      const cells = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+      let t = '<table>';
+      const head = cells(rows[0]);
+      t += '<thead><tr>' + head.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>';
+      const bodyStart = (rows[1] && /^[\s|:-]+$/.test(rows[1])) ? 2 : 1;
+      for (let r = bodyStart; r < rows.length; r++) {
+        t += '<tr>' + cells(rows[r]).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>';
+      }
+      html += t + '</tbody></table>';
+      continue;
+    }
+    // list block
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*]\s+/, '')); i++; }
+      html += flushList(items);
+      continue;
+    }
+    if (line.trim() === '') { i++; continue; }
+    // paragraph (gather until a blank line or the start of another block)
+    const isBlockStart = (l) => /^\s*(#{1,6}\s|[-*]\s|\|)/.test(l) || /^\s*(---|\*\*\*|___)\s*$/.test(l);
+    const para = [];
+    while (i < lines.length && lines[i].trim() !== '' && !isBlockStart(lines[i])) {
+      para.push(lines[i]); i++;
+    }
+    // Guard: if nothing was gathered (a stray line that looks like a block but
+    // wasn't consumed above), emit it as a paragraph and advance — never stall.
+    if (para.length) { html += '<p>' + inline(para.join(' ')) + '</p>'; }
+    else { html += '<p>' + inline(lines[i]) + '</p>'; i++; }
+  }
+  return html;
+}
+
+// ══════════════════════════════════════════════════════
+//  STAGE 1 — AUTHORITY DECK WIZARD
+// ══════════════════════════════════════════════════════
+let authorityExtraction = null;   // parsed JSON from Part B (review surface source)
+let authorityMarkdown   = '';     // assembled deck markdown
+let authoritySaved      = null;   // { key, name, email, updatedAt }
+
+const AUTH_STEPS = [
+  'Reading transcript', 'Extracting client + assets', 'Finding named openings',
+  'Detecting doc type', 'Building review JSON',
+];
+const DECK_STEPS = [
+  'Loading house format', 'Writing executive summary', 'Building identity tables',
+  'Mapping the engine', 'Drafting the roadmap', 'Finalizing the deck',
+];
+
+function gotoStep(n) {
+  document.querySelectorAll('#view-authority .wz-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('wz-' + n).classList.add('active');
+  document.querySelectorAll('#view-authority .wz-step').forEach(s => {
+    const sn = +s.dataset.step;
+    s.classList.toggle('active', sn === n);
+    s.classList.toggle('done', sn < n);
+  });
+  document.querySelector('#view-authority .wizard-body').scrollTop = 0;
+}
+
+// Step 1 → Extract
+document.getElementById('btn-extract').addEventListener('click', async () => {
+  const name = document.getElementById('authority-client-name').value.trim();
+  const email = document.getElementById('authority-client-email').value.trim();
+  const transcript = document.getElementById('authority-transcript').value.trim();
+  const status = document.getElementById('authority-extract-status');
+  status.classList.remove('error');
+  if (!name || !email) { status.textContent = 'Client name and email are required.'; status.classList.add('error'); return; }
+  if (!transcript) { status.textContent = 'Paste the Fathom transcript first.'; status.classList.add('error'); return; }
+
+  const btn = document.getElementById('btn-extract');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Extracting…';
+  status.textContent = '';
+  try {
+    const res = await fetch('/api/authority/extract', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientName: name, clientEmail: email,
+        docTypeHint: '', // deck always combines both parts — no type to choose
+        location: document.getElementById('authority-location').value.trim(),
+        targetTimeline: document.getElementById('authority-timeline').value.trim(),
+        presentedDate: document.getElementById('authority-presented').value.trim(),
+        nextCall: document.getElementById('authority-nextcall').value.trim(),
+        transcript,
+      }),
+    });
+    let extraction = null;
+    await readSSEStream(res, (event, payload) => {
+      if (event === 'done') extraction = payload.extraction;
+      else if (event === 'error') throw new Error(payload.error);
+    });
+    if (!extraction) throw new Error('No extraction returned');
+    authorityExtraction = extraction;
+    renderReview(extraction);
+    gotoStep(2);
+  } catch (err) {
+    status.textContent = err.message; status.classList.add('error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Extract →';
+  }
+});
+
+function renderReview(ex) {
+  document.getElementById('authority-json').value = JSON.stringify(ex, null, 2);
+  // Names to verify
+  const names = Array.isArray(ex.extracted_names) ? ex.extracted_names : [];
+  document.getElementById('authority-names').innerHTML = names.length
+    ? names.map(n => `<div class="wz-name-chip">${n.replace(/</g,'&lt;')}</div>`).join('')
+    : '<div class="wz-name-chip" style="opacity:.6">None flagged.</div>';
+  updateReviewGate();
+}
+
+function currentReviewJSON() {
+  return JSON.parse(document.getElementById('authority-json').value);
+}
+
+function updateReviewGate() {
+  const gate = document.getElementById('authority-gate');
+  const needsEl = document.getElementById('authority-needs');
+  let json;
+  try { json = currentReviewJSON(); }
+  catch (_) { gate.className = 'wz-gate warn'; gate.textContent = '⚠ The JSON is not valid — fix the syntax before generating.'; needsEl.textContent = ''; return false; }
+  const flat = JSON.stringify(json);
+  const tbdCount = (flat.match(/\bTBD\b/gi) || []).length;
+  needsEl.innerHTML = tbdCount
+    ? `<span style="color:var(--brand-muted);text-transform:none;letter-spacing:0">— ${tbdCount} field(s) marked TBD (AI will fill or leave a clean “TBD”)</span>`
+    : '<span style="color:#2e7d32;text-transform:none;letter-spacing:0">— all facts captured</span>';
+  const northStar = (json.identity && json.identity.north_star) || json.north_star || '';
+  const nsMissing = !northStar || /^TBD$/i.test(northStar.trim());
+  if (nsMissing) {
+    gate.className = 'wz-gate warn';
+    gate.innerHTML = '↔ <strong>Tip:</strong> set the north star for a sharper deck — it anchors everything. You can still generate without it.';
+    return true; // informational only — never block
+  }
+  gate.className = 'wz-gate ok';
+  gate.innerHTML = '✓ North star set. Anything marked TBD will read as a clean placeholder in the deck — no red flags.';
+  return true;
+}
+document.getElementById('authority-json').addEventListener('input', updateReviewGate);
+document.getElementById('btn-back-1').addEventListener('click', () => gotoStep(1));
+
+// Step 2 → Generate Deck
+document.getElementById('btn-generate-deck').addEventListener('click', async () => {
+  const status = document.getElementById('authority-gen-status');
+  status.classList.remove('error');
+  let json;
+  try { json = currentReviewJSON(); }
+  catch (_) { status.textContent = 'The JSON is invalid — fix it first.'; status.classList.add('error'); return; }
+  const btn = document.getElementById('btn-generate-deck');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Generating…';
+  status.textContent = '';
+  try {
+    const res = await fetch('/api/authority/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        extraction: json,
+        client: {
+          name: document.getElementById('authority-client-name').value.trim(),
+          email: document.getElementById('authority-client-email').value.trim(),
+        },
+      }),
+    });
+    let md = '', saved = null;
+    await readSSEStream(res, (event, payload) => {
+      if (event === 'done') { md = payload.markdown; saved = payload.saved; }
+      else if (event === 'error') throw new Error(payload.error);
+    });
+    authorityMarkdown = md; authoritySaved = saved;
+    renderDeckStep(md, saved);
+    gotoStep(3);
+  } catch (err) {
+    status.textContent = err.message; status.classList.add('error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate Deck →';
+  }
+});
+
+function renderDeckStep(md, saved) {
+  document.getElementById('authority-deck-doc').innerHTML = mdToHtml(md);
+  const bar = document.getElementById('deck-saved-bar');
+  if (saved) {
+    const when = new Date(saved.updatedAt).toLocaleString();
+    bar.innerHTML = `✓ <strong>Saved to Memory Bank</strong> — ${saved.name || saved.email} · ${when}. Stage 2 can now pull this deck automatically.`;
+    bar.style.display = '';
+  } else { bar.style.display = 'none'; }
+}
+
+document.getElementById('btn-download-md').addEventListener('click', () => {
+  const blob = new Blob([authorityMarkdown], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  const slug = (authoritySaved?.name || 'authority-deck').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  a.href = URL.createObjectURL(blob); a.download = slug + '-authority-deck.md';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+// Export the rendered deck as a PDF via the browser's print engine, using a
+// hidden same-origin iframe so only the deck (not the app chrome) is printed.
+const DECK_PDF_CSS = `
+  @page { margin: 16mm 15mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'SF UI Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #041A1C; font-size: 12pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 24pt; margin: 0 0 12px; }
+  h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 17pt; margin: 22px 0 9px; padding-bottom: 5px; border-bottom: 1px solid rgba(162,120,51,0.4); break-after: avoid; }
+  h3 { font-size: 13pt; font-weight: 700; margin: 15px 0 6px; break-after: avoid; }
+  p { margin: 8px 0; }
+  ul { margin: 8px 0 8px 20px; }
+  li { margin: 3px 0; break-inside: avoid; }
+  hr { border: none; border-top: 2px solid #E9BF5E; margin: 20px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 11pt; break-inside: avoid; }
+  th, td { border: 1px solid rgba(162,120,51,0.4); padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { background: #F7F5F0; font-weight: 700; }
+  strong { font-weight: 700; }
+  .deck-needs { background: #fdeaea; color: #c62828; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+`;
+document.getElementById('btn-download-pdf').addEventListener('click', () => {
+  const name = (authoritySaved && authoritySaved.name) || 'Authority Deck';
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument;
+  doc.open();
+  doc.write('<!doctype html><html><head><meta charset="utf-8">'
+    + '<title>' + name.replace(/</g,'&lt;') + ' — Authority Deck</title>'
+    + '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    + '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">'
+    + '<style>' + DECK_PDF_CSS + '</style></head><body>'
+    + document.getElementById('authority-deck-doc').innerHTML
+    + '</body></html>');
+  doc.close();
+  // Give the fonts a beat to load so headings render in Playfair, then print.
+  const go = () => { iframe.contentWindow.focus(); iframe.contentWindow.print(); setTimeout(() => iframe.remove(), 1500); };
+  setTimeout(go, 400);
+});
+// Export the rendered deck as a Word-openable .doc (HTML-based). Word and
+// Google Docs open this natively and preserve headings, tables, and bold.
+const DECK_DOC_CSS = `
+  body { font-family: 'Calibri', 'Segoe UI', sans-serif; color: #041A1C; font-size: 11pt; line-height: 1.5; }
+  h1 { font-family: 'Georgia', serif; font-size: 22pt; margin: 0 0 10pt; }
+  h2 { font-family: 'Georgia', serif; font-size: 16pt; margin: 16pt 0 8pt; border-bottom: 1pt solid #B0863C; padding-bottom: 3pt; }
+  h3 { font-size: 12pt; font-weight: bold; margin: 12pt 0 5pt; }
+  p { margin: 6pt 0; }
+  ul { margin: 6pt 0 6pt 18pt; }
+  li { margin: 2pt 0; }
+  hr { border: none; border-top: 1.5pt solid #E9BF5E; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10.5pt; }
+  th, td { border: 1pt solid #B0863C; padding: 5pt 7pt; text-align: left; vertical-align: top; }
+  th { background: #F7F5F0; font-weight: bold; }
+  strong { font-weight: bold; }
+  .deck-needs { color: #c62828; font-weight: bold; }
+`;
+document.getElementById('btn-download-doc').addEventListener('click', () => {
+  const name = (authoritySaved && authoritySaved.name) || 'Authority Deck';
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const html =
+    "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>"
+    + "<head><meta charset='utf-8'><title>" + name.replace(/</g,'&lt;') + " — Authority Deck</title>"
+    + "<style>" + DECK_DOC_CSS + "</style></head><body>"
+    + document.getElementById('authority-deck-doc').innerHTML
+    + "</body></html>";
+  const blob = new Blob(['﻿', html], { type: 'application/msword' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = slug + '-authority-deck.doc';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('btn-copy-md').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(authorityMarkdown); const b = document.getElementById('btn-copy-md'); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy markdown', 1500); } catch (_) {}
+});
+document.getElementById('btn-new-deck').addEventListener('click', () => {
+  authorityExtraction = null; authorityMarkdown = ''; authoritySaved = null;
+  ['authority-client-name','authority-client-email','authority-location','authority-timeline','authority-presented','authority-nextcall','authority-transcript','authority-json'].forEach(id => document.getElementById(id).value = '');
+  gotoStep(1);
+});
+document.getElementById('btn-use-in-strategy').addEventListener('click', () => {
+  document.getElementById('client-name').value  = document.getElementById('authority-client-name').value.trim();
+  document.getElementById('client-email').value = document.getElementById('authority-client-email').value.trim();
+  switchView('strategy');
+});
+
+// ══════════════════════════════════════════════════════
+//  MEMORY BANK
+// ══════════════════════════════════════════════════════
+async function loadMemory() {
+  const list = document.getElementById('memory-list');
+  list.innerHTML = '<div class="memory-empty">Loading…</div>';
+  try {
+    const data = await (await fetch('/api/memory')).json();
+    if (!data.decks.length) { list.innerHTML = '<div class="memory-empty">No decks saved yet. Generate an Authority Deck in Stage 1 and it will appear here.</div>'; return; }
+    list.innerHTML = '';
+    data.decks.forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'memory-card';
+      const when = new Date(d.updatedAt).toLocaleString();
+      const dt = (d.docType || '').replace(/_/g, ' ');
+      card.innerHTML = `
+        <div class="mc-main">
+          <div class="mc-name">${(d.name || d.email || d.key).replace(/</g,'&lt;')}</div>
+          <div class="mc-meta">${d.email ? d.email.replace(/</g,'&lt;') + ' · ' : ''}${when}${d.versionCount ? ' · ' + d.versionCount + ' prior version(s)' : ''}</div>
+        </div>
+        ${dt ? `<span class="mc-badge">${dt}</span>` : ''}
+        <button class="mc-btn" data-act="view">View</button>
+        <button class="mc-btn" data-act="use">Use in Stage 2</button>
+        <button class="mc-btn danger" data-act="del">Delete</button>`;
+      card.querySelector('[data-act="view"]').addEventListener('click', () => viewDeck(d.key));
+      card.querySelector('[data-act="use"]').addEventListener('click', () => useDeck(d));
+      card.querySelector('[data-act="del"]').addEventListener('click', () => delDeck(d));
+      list.appendChild(card);
+    });
+  } catch (err) {
+    list.innerHTML = '<div class="memory-empty">Could not load: ' + err.message + '</div>';
+  }
+}
+async function viewDeck(key) {
+  const data = await (await fetch('/api/memory/' + key)).json();
+  if (!data.ok) return;
+  authorityMarkdown = data.deck.markdown || ''; authoritySaved = { name: data.deck.name, email: data.deck.email, updatedAt: data.deck.updatedAt };
+  renderDeckStep(authorityMarkdown, authoritySaved);
+  switchView('authority'); gotoStep(3);
+}
+function useDeck(d) {
+  document.getElementById('client-name').value = d.name || '';
+  document.getElementById('client-email').value = d.email || '';
+  switchView('strategy');
+}
+async function delDeck(d) {
+  if (!confirm('Delete the saved Authority Deck for "' + (d.name || d.email) + '"? This cannot be undone.')) return;
+  await fetch('/api/memory/' + d.key, { method: 'DELETE' });
+  loadMemory();
+}
+
+// ══════════════════════════════════════════════════════
+//  STAGE 2 — Authority Deck banner + resolution
+// ══════════════════════════════════════════════════════
+let resolvedDeck = null; // memory record found for the current client
+
+function resolvedDeckText() {
+  const up = document.getElementById('deck-upload').value.trim();
+  if (up) return up;
+  if (resolvedDeck) return resolvedDeck.markdown || JSON.stringify(resolvedDeck.json || {});
+  return '';
+}
+
+let deckLookupTimer = null;
+function refreshDeckBanner() {
+  clearTimeout(deckLookupTimer);
+  deckLookupTimer = setTimeout(doDeckLookup, 250);
+}
+async function doDeckLookup() {
+  const name = document.getElementById('client-name').value.trim();
+  const email = document.getElementById('client-email').value.trim();
+  const banner = document.getElementById('deck-banner');
+  const upload = document.getElementById('deck-upload');
+  if (!name && !email) {
+    resolvedDeck = null;
+    banner.className = 'missing';
+    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Deck.';
+    upload.style.display = 'none';
+    return;
+  }
+  try {
+    const q = new URLSearchParams({ email, name }).toString();
+    const data = await (await fetch('/api/memory/find?' + q)).json();
+    if (data.deck) {
+      resolvedDeck = data.deck;
+      const when = new Date(data.deck.updatedAt).toLocaleDateString();
+      banner.className = 'found';
+      banner.innerHTML = `<span class="db-title">✓ Using ${(data.deck.name || data.deck.email).replace(/</g,'&lt;')}'s Authority Deck</span>Saved ${when}. It will be fed into the Strategy Guide as context.`;
+      upload.style.display = 'none'; upload.value = '';
+    } else {
+      resolvedDeck = null;
+      banner.className = 'missing';
+      banner.innerHTML = `<span class="db-title">No saved Authority Deck for this client</span>Generate one in Stage 1, or paste it below to use it now.`;
+      upload.style.display = '';
+    }
+  } catch (_) { /* leave banner as-is on transient error */ }
+}
+document.getElementById('client-name').addEventListener('input', refreshDeckBanner);
+document.getElementById('client-email').addEventListener('input', refreshDeckBanner);
 
 // ── Generate ───────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', async () => {
@@ -1521,6 +2561,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     fd.append('transcript', document.getElementById('transcript-input').value.trim());
     fd.append('icpListNeeded', document.getElementById('icp-toggle').checked);
     fd.append('offers', JSON.stringify(document.getElementById('offer-toggle').checked ? getOffers() : []));
+    fd.append('authorityDeck', resolvedDeckText());
 
     const pdfFile = document.getElementById('figma-pdf').files[0];
     if (pdfFile) fd.append('figmaPdf', pdfFile);
