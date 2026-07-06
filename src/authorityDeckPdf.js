@@ -18,6 +18,7 @@ const C = {
 };
 
 function wrapText(text, font, size, maxW) {
+  text = sanitizeForPdf(text);
   const words = String(text || '').split(/\s+/).filter(Boolean);
   const lines = [];
   let cur = '';
@@ -31,9 +32,33 @@ function wrapText(text, font, size, maxW) {
 }
 
 function clipText(text, font, size, maxW) {
-  let s = String(text || '');
+  text = sanitizeForPdf(text);
+  let s = text;
   while (s.length > 1 && font.widthOfTextAtSize(s + '...', size) > maxW) s = s.slice(0, -1);
-  return font.widthOfTextAtSize(String(text || ''), size) > maxW ? s + '...' : String(text || '');
+  return font.widthOfTextAtSize(text, size) > maxW ? s + '...' : text;
+}
+
+// pdf-lib's standard fonts (Helvetica, etc.) use WinAnsi encoding, which
+// covers Windows-1252 -- NOT full Unicode. Arrows, checkmarks, and other
+// symbols outside that set throw at render time and take down the whole
+// PDF. Claude's generated text isn't guaranteed to avoid them, so every
+// page.drawText call gets sanitized (see addPage's page.drawText wrap
+// below) rather than relying on the model to never use one.
+function sanitizeForPdf(text) {
+  if (text == null) return '';
+  return String(text)
+    .replace(/[\u2192\u21D2\u27A1\u2794]/g, '->')
+    .replace(/[\u2190\u21D0]/g, '<-')
+    .replace(/[\u2191\u21D1]/g, '^')
+    .replace(/[\u2193\u21D3]/g, 'v')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2026]/g, '...')
+    .replace(/[\u2713\u2714\u2705]/g, '-')
+    .replace(/[\u2717\u2718\u274C]/g, 'x')
+    // Final safety net -- strip anything else outside WinAnsi's range
+    // rather than let one stray symbol crash the whole render.
+    .replace(/[^\x00-\xFF]/g, '');
 }
 
 /**
@@ -64,6 +89,9 @@ async function generateAuthorityDeckPDF(deck) {
   function addPage(sec = '', { header = true } = {}) {
     section = sec;
     page = pdfDoc.addPage([W, H]);
+
+    const rawDrawText = page.drawText.bind(page);
+    page.drawText = (text, opts) => rawDrawText(sanitizeForPdf(text), opts);
 
     if (header) {
       page.drawRectangle({ x: 0, y: H - HEADER_H, width: W, height: HEADER_H, color: C.dark });

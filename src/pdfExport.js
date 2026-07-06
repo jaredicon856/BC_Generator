@@ -18,6 +18,7 @@ const C = {
 };
 
 function wrapText(text, font, size, maxW) {
+  text = sanitizeForPdf(text);
   const words = String(text || '').split(' ');
   const lines = []; let cur = '';
   for (const w of words) {
@@ -30,9 +31,33 @@ function wrapText(text, font, size, maxW) {
 }
 
 function clipText(text, font, size, maxW) {
-  let s = String(text || '');
+  text = sanitizeForPdf(text);
+  let s = text;
   while (s.length > 1 && font.widthOfTextAtSize(s + '...', size) > maxW) s = s.slice(0, -1);
-  return font.widthOfTextAtSize(String(text || ''), size) > maxW ? s + '...' : String(text || '');
+  return font.widthOfTextAtSize(text, size) > maxW ? s + '...' : text;
+}
+
+// pdf-lib's standard fonts (Helvetica, etc.) use WinAnsi encoding, which
+// covers Windows-1252 -- NOT full Unicode. Arrows, checkmarks, and other
+// symbols outside that set throw at render time and take down the whole
+// PDF. Claude's generated text isn't guaranteed to avoid them, so every
+// page.drawText call gets sanitized (see addPage's page.drawText wrap
+// below) rather than relying on the model to never use one.
+function sanitizeForPdf(text) {
+  if (text == null) return '';
+  return String(text)
+    .replace(/[\u2192\u21D2\u27A1\u2794]/g, '->')
+    .replace(/[\u2190\u21D0]/g, '<-')
+    .replace(/[\u2191\u21D1]/g, '^')
+    .replace(/[\u2193\u21D3]/g, 'v')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2026]/g, '...')
+    .replace(/[\u2713\u2714\u2705]/g, '-')
+    .replace(/[\u2717\u2718\u274C]/g, 'x')
+    // Final safety net -- strip anything else outside WinAnsi's range
+    // rather than let one stray symbol crash the whole render.
+    .replace(/[^\x00-\xFF]/g, '');
 }
 
 async function generatePDF(battlecard, _colors = {}, pitch = null) {
@@ -57,6 +82,9 @@ async function generatePDF(battlecard, _colors = {}, pitch = null) {
   function addPage(sec = '') {
     section = sec;
     page = pdfDoc.addPage([W, H]);
+
+    const rawDrawText = page.drawText.bind(page);
+    page.drawText = (text, opts) => rawDrawText(sanitizeForPdf(text), opts);
 
     // Header
     page.drawRectangle({ x: 0, y: H - HEADER_H, width: W, height: HEADER_H, color: C.dark });
@@ -140,8 +168,9 @@ async function generatePDF(battlecard, _colors = {}, pitch = null) {
     let cx = ML;
     needs(PILL_H);
 
-    for (const item of items) {
-      const tw = FONT.widthOfTextAtSize(String(item), FS) + PH * 2;
+    for (const rawItem of items) {
+      const item = sanitizeForPdf(rawItem);
+      const tw = FONT.widthOfTextAtSize(item, FS) + PH * 2;
       if (cx + tw > W - MR && cx > ML) { y -= PILL_H + 5; cx = ML; needs(PILL_H); }
       const bg  = opts.dark ? C.dark : C.cardBg;
       const col = opts.dark ? C.gold : C.text;
@@ -150,7 +179,7 @@ async function generatePDF(battlecard, _colors = {}, pitch = null) {
       page.drawLine({ start: { x: cx, y }, end: { x: cx + tw, y }, thickness: 0.5, color: C.goldMid });
       page.drawLine({ start: { x: cx, y: y - PILL_H }, end: { x: cx, y }, thickness: 0.5, color: C.goldMid });
       page.drawLine({ start: { x: cx + tw, y: y - PILL_H }, end: { x: cx + tw, y }, thickness: 0.5, color: C.goldMid });
-      page.drawText(String(item), { x: cx + PH, y: y - PILL_H + 5, font: FONT, size: FS, color: col });
+      page.drawText(item, { x: cx + PH, y: y - PILL_H + 5, font: FONT, size: FS, color: col });
       cx += tw + GAP;
     }
     y -= PILL_H + 10;
