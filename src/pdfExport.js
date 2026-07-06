@@ -185,16 +185,27 @@ async function generatePDF(battlecard, _colors = {}, pitch = null) {
     y -= PILL_H + 10;
   }
 
-  // Two-column stat cards
+  // Two-column stat cards. Values can be short ("50-500") or a full
+  // descriptive sentence -- Claude's output length isn't guaranteed, so this
+  // wraps and grows the box instead of clipText-ing a fixed single line
+  // (which silently truncated real content with a trailing "...").
   function statRow(left, right) {
-    const colW = (CW - 8) / 2, h = 46;
+    const colW = (CW - 8) / 2, VS = 12, LH = 15, PAD_TOP = 26, PAD_BOTTOM = 12;
+    const cols = [[ML, left], [ML + colW + 8, right]];
+    const wrapped = cols.map(([, item]) => item ? wrapText(item.value || '—', bold, VS, colW - 20) : []);
+    const maxLines = Math.max(1, ...wrapped.map((l) => l.length));
+    const h = Math.max(46, PAD_TOP + maxLines * LH + PAD_BOTTOM);
     needs(h);
-    [[ML, left], [ML + colW + 8, right]].forEach(([bx, item]) => {
+    cols.forEach(([bx, item], i) => {
       if (!item) return;
       page.drawRectangle({ x: bx, y: y - h, width: colW, height: h, color: C.cardBg });
       page.drawRectangle({ x: bx, y: y - h, width: 3, height: h, color: C.gold });
       page.drawText(item.label.toUpperCase(), { x: bx + 10, y: y - 14, font: bold, size: 7.5, color: C.goldDeep });
-      page.drawText(clipText(item.value || '—', bold, 14, colW - 20), { x: bx + 10, y: y - 32, font: bold, size: 14, color: C.text });
+      let ty = y - PAD_TOP;
+      for (const line of wrapped[i]) {
+        page.drawText(line, { x: bx + 10, y: ty, font: bold, size: VS, color: C.text });
+        ty -= LH;
+      }
     });
     y -= h + 8;
   }

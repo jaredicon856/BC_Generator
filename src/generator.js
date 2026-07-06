@@ -41,7 +41,7 @@ Return this exact JSON structure:
       "employeeRange": "",
       "revenueRange": "",
       "rationale": ""
-    },
+    }, // employeeRange/revenueRange must be short labels only, e.g. "50-500 employees" / "Series B+" -- put any explanation in rationale, not in these two fields, since they render in a compact stat box
     "geography": {
       "primary": "",
       "notes": ""
@@ -88,7 +88,7 @@ If icpListNeeded is true, populate icpList with this structure (these are the po
     "employeeRange": "",
     "revenueRange": "",
     "rationale": ""
-  },
+  }, // same rule as above -- short labels only, explanation goes in rationale
   "geography": {
     "primary": "",
     "notes": ""
