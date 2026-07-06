@@ -10,6 +10,7 @@ const { generateAuthorityDeck }  = require('./src/authorityDeckGenerator');
 const { generatePDF }            = require('./src/pdfExport');
 const { generateAuthorityDeckPDF } = require('./src/authorityDeckPdf');
 const { generateVoiceSummary }   = require('./src/voiceSummary');
+const store                      = require('./src/store');
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -41,6 +42,19 @@ function startSSE(res) {
 function sseEvent(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
+
+// ── Fathom webhook helpers ──────────────────────────────
+// Expects the meeting title to contain the words "strategy call" plus
+// either "1"/"one" or "2"/"two" -- e.g. "Strategy Call 1 -- Acme Corp".
+// Returns 1, 2, or 'unknown'.
+function detectCallPhase(title) {
+  const t = String(title || '').toLowerCase();
+  if (!t.includes('strategy call')) return 'unknown';
+  if (/\b(1|one)\b/.test(t)) return 1;
+  if (/\b(2|two)\b/.test(t)) return 2;
+  return 'unknown';
+}
+
 
 // ── POST /api/generate ─────────────────────────────────
 app.post('/api/generate', upload.single('figmaPdf'), async (req, res) => {
@@ -83,6 +97,66 @@ app.post('/api/generate-pitch', async (req, res) => {
     sseEvent(res, 'error', { error: err.message });
   } finally {
     res.end();
+  }
+});
+
+// ── POST /api/webhook/fathom ────────────────────────────
+// Called by Zapier/Make's "Webhooks by Zapier/Make" action, triggered off
+// Fathom's "New Transcript" / "New AI Summary" trigger. Expects JSON body:
+//   { meetingTitle, clientName, transcript, recordingId, presentedDate }
+// meetingTitle must contain "Strategy Call 1" or "Strategy Call 2" (case-
+// insensitive, "one"/"two" also accepted) so the handler knows which phase
+// to run. clientName is required explicitly -- we don't try to parse a
+// client name out of the title, too unreliable across naming conventions.
+app.post('/api/webhook/fathom', async (req, res) => {
+  const providedSecret = req.get('x-webhook-secret') || '';
+  if (!process.env.FATHOM_WEBHOOK_SECRET || providedSecret !== process.env.FATHOM_WEBHOOK_SECRET) {
+    return res.status(401).json({ ok: false, error: 'Invalid or missing webhook secret' });
+  }
+
+  try {
+    const { meetingTitle, clientName, transcript, recordingId, presentedDate } = req.body || {};
+
+    if (!meetingTitle || !clientName || !transcript) {
+      return res.status(400).json({ ok: false, error: 'meetingTitle, clientName, and transcript are required' });
+    }
+
+    if (recordingId && (await store.has(`processed:${recordingId}`))) {
+      return res.json({ ok: true, skipped: true, reason: 'recording already processed' });
+    }
+
+    const phase = detectCallPhase(meetingTitle);
+    if (phase === 'unknown') {
+      console.warn(`[webhook/fathom] Could not detect call phase from title: "${meetingTitle}" -- skipping`);
+      return res.json({ ok: true, skipped: true, reason: 'title did not match "Strategy Call 1/2" pattern' });
+    }
+
+    if (phase === 1) {
+      const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
+      await store.set(`authorityDeck:${clientName}`, authorityDeck);
+      const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
+      // TODO(#6): post pdfBytes to the #authority-deck-delivery Slack channel
+      // once SLACK_BOT_TOKEN + channel ID are configured.
+      if (recordingId) await store.set(`processed:${recordingId}`, true);
+      return res.json({ ok: true, phase: 1, clientName, pdfBytes: pdfBytes.length });
+    }
+
+    // phase === 2
+    const authorityDeck = await store.get(`authorityDeck:${clientName}`);
+    if (!authorityDeck) {
+      console.error(`[webhook/fathom] No stored Authority Deck for "${clientName}" -- Call 2 fired before Call 1 completed, or clientName didn't match between calls.`);
+      // TODO(#6): post an alert to Slack instead of silently generating an
+      // incomplete Battlecard once Slack delivery is wired.
+    }
+
+    const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck });
+    const pdfBytes = await generatePDF(battlecard);
+    // TODO(#6): post pdfBytes to the Battlecard delivery Slack channel.
+    if (recordingId) await store.set(`processed:${recordingId}`, true);
+    return res.json({ ok: true, phase: 2, clientName, missingAuthorityDeck: !authorityDeck, pdfBytes: pdfBytes.length });
+  } catch (err) {
+    console.error('[/api/webhook/fathom]', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
   }
 });
 
