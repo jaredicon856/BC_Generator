@@ -91,6 +91,7 @@ podcast-battlecard/
 | Method | Route | Description |
 |--------|-------|-------------|
 | POST | `/api/generate-authority-deck` | Phase 1. Accepts Strategy Call 1 inputs (client name, podcast/business name, niche, geography, ideal buyer, offers, referral partners, transcript), returns `{ ok, authorityDeck }` |
+| POST | `/api/generate-voice-summary` | "Jarvis" step. Accepts `{ text, voice, model }` (a call recap), returns an MP3 voice note generated via OpenAI TTS. Requires `OPENAI_API_KEY` env var. |
 | POST | `/api/export-authority-pdf` | Accepts `{ authorityDeck }` JSON, returns the branded Authority Deck PDF |
 | POST | `/api/generate` | Accepts form inputs as JSON, returns `{ ok, battlecard }` |
 | POST | `/api/brand` | Accepts `multipart/form-data` with `brandFile` and/or `brandText`, returns `{ ok, colors }` |

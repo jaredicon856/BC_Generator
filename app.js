@@ -9,6 +9,7 @@ const { generatePitch }          = require('./src/pitchGenerator');
 const { generateAuthorityDeck }  = require('./src/authorityDeckGenerator');
 const { generatePDF }            = require('./src/pdfExport');
 const { generateAuthorityDeckPDF } = require('./src/authorityDeckPdf');
+const { generateVoiceSummary }   = require('./src/voiceSummary');
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -129,6 +130,25 @@ app.post('/api/export-authority-pdf', async (req, res) => {
     res.send(Buffer.from(pdfBytes));
   } catch (err) {
     console.error('[/api/export-authority-pdf]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/generate-voice-summary ───────────────────
+// "Jarvis" step — converts a call recap (e.g. Fathom's summary text) into an
+// MP3 voice note via OpenAI TTS. Returns raw audio so the caller (webhook
+// handler / Slack upload step) can post it directly.
+app.post('/api/generate-voice-summary', async (req, res) => {
+  try {
+    const { text, voice, model } = req.body;
+    if (!text) return res.status(400).json({ ok: false, error: 'text required' });
+
+    const audioBuffer = await generateVoiceSummary(text, { voice, model });
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Disposition', 'attachment; filename="call-summary.mp3"');
+    res.send(audioBuffer);
+  } catch (err) {
+    console.error('[/api/generate-voice-summary]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
