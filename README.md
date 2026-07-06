@@ -21,11 +21,12 @@ A full-stack web app that generates a complete podcast guest prospecting profile
                                    # set the same value as a header in the Zapier/Make webhook action
    ```
 
-   **Cross-call storage note:** `src/store.js` is currently an in-memory placeholder --
-   it does NOT persist between Strategy Call 1 and Strategy Call 2 in a real
-   deployment, since serverless functions don't share memory. Swap it for
-   Vercel KV, Upstash Redis, or an Airtable/Sheet row before relying on the
-   automated Call 2 -> Battlecard flow in production.
+   **Cross-call storage:** `src/store.js` is backed by Upstash for Redis
+   (connected via Vercel's Storage integration -- `KV_REST_API_URL` /
+   `KV_REST_API_TOKEN` are injected automatically once connected, no manual
+   env var entry needed). Authority Deck output and processed-recording
+   dedupe keys are stored with a 30-day TTL, comfortably longer than the
+   real gap between Strategy Call 1 and Strategy Call 2.
 
 3. **Run the server**
    ```bash
