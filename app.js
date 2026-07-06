@@ -61,6 +61,14 @@ function detectCallPhase(title) {
   return 1;
 }
 
+// Store keys need to be exact-match stable across Call 1 and Call 2. A
+// typed/displayed name can drift (capitalization, nicknames, whitespace) --
+// an email address copied straight from Fathom's attendee data doesn't.
+// Always normalize whatever identifier is used as the lookup key.
+function normalizeKey(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
 
 // ── POST /api/generate ─────────────────────────────────
 app.post('/api/generate', upload.single('figmaPdf'), async (req, res) => {
@@ -121,11 +129,17 @@ app.post('/api/webhook/fathom', async (req, res) => {
   }
 
   try {
-    const { meetingTitle, clientName, transcript, recordingId, presentedDate } = req.body || {};
+    const { meetingTitle, clientName, clientKey, transcript, recordingId, presentedDate } = req.body || {};
 
     if (!meetingTitle || !clientName || !transcript) {
       return res.status(400).json({ ok: false, error: 'meetingTitle, clientName, and transcript are required' });
     }
+
+    // clientKey should be the client's email from Fathom's attendee data --
+    // stable across both calls. Falls back to a normalized clientName if no
+    // email is available, but that's the less reliable option (see
+    // normalizeKey comment above).
+    const storeKey = normalizeKey(clientKey || clientName);
 
     if (recordingId && (await store.has(`processed:${recordingId}`))) {
       return res.json({ ok: true, skipped: true, reason: 'recording already processed' });
@@ -139,18 +153,18 @@ app.post('/api/webhook/fathom', async (req, res) => {
 
     if (phase === 1) {
       const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
-      await store.set(`authorityDeck:${clientName}`, authorityDeck);
+      await store.set(`authorityDeck:${storeKey}`, authorityDeck);
       const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
       // TODO(#6): post pdfBytes to the #authority-deck-delivery Slack channel
       // once SLACK_BOT_TOKEN + channel ID are configured.
       if (recordingId) await store.set(`processed:${recordingId}`, true);
-      return res.json({ ok: true, phase: 1, clientName, pdfBytes: pdfBytes.length });
+      return res.json({ ok: true, phase: 1, clientName, storeKey, pdfBytes: pdfBytes.length });
     }
 
     // phase === 2
-    const authorityDeck = await store.get(`authorityDeck:${clientName}`);
+    const authorityDeck = await store.get(`authorityDeck:${storeKey}`);
     if (!authorityDeck) {
-      console.error(`[webhook/fathom] No stored Authority Deck for "${clientName}" -- Call 2 fired before Call 1 completed, or clientName didn't match between calls.`);
+      console.error(`[webhook/fathom] No stored Authority Deck for key "${storeKey}" (clientName: "${clientName}") -- Call 2 fired before Call 1 completed, or the clientKey/clientName didn't match between calls.`);
       // TODO(#6): post an alert to Slack instead of silently generating an
       // incomplete Battlecard once Slack delivery is wired.
     }
