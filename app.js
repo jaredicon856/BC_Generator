@@ -155,14 +155,24 @@ app.post('/api/webhook/fathom', async (req, res) => {
       return res.json({ ok: true, skipped: true, reason: 'title did not match "Strategy Call 1/2" pattern' });
     }
 
+    // Respond to Zapier/Make right away. Claude generation + PDF rendering
+    // can take well past what a webhook client is willing to wait for
+    // (30-60+ seconds is common), even though Vercel itself allows up to
+    // 300s for this function. Acknowledge receipt now; the actual work
+    // continues below after the response is sent -- Vercel keeps this
+    // invocation alive until the promise chain settles or maxDuration hits.
+    res.json({ ok: true, accepted: true, phase, clientName, storeKey });
+
+    if (recordingId) await store.set(`processed:${recordingId}`, true);
+
     if (phase === 1) {
       const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
       await store.set(`authorityDeck:${storeKey}`, authorityDeck);
       const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
+      console.log(`[webhook/fathom] Phase 1 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes`);
       // TODO(#6): post pdfBytes to the #authority-deck-delivery Slack channel
       // once SLACK_BOT_TOKEN + channel ID are configured.
-      if (recordingId) await store.set(`processed:${recordingId}`, true);
-      return res.json({ ok: true, phase: 1, clientName, storeKey, pdfBytes: pdfBytes.length });
+      return;
     }
 
     // phase === 2
@@ -175,12 +185,15 @@ app.post('/api/webhook/fathom', async (req, res) => {
 
     const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck });
     const pdfBytes = await generatePDF(battlecard);
+    console.log(`[webhook/fathom] Phase 2 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes, missingAuthorityDeck=${!authorityDeck}`);
     // TODO(#6): post pdfBytes to the Battlecard delivery Slack channel.
-    if (recordingId) await store.set(`processed:${recordingId}`, true);
-    return res.json({ ok: true, phase: 2, clientName, missingAuthorityDeck: !authorityDeck, pdfBytes: pdfBytes.length });
   } catch (err) {
     console.error('[/api/webhook/fathom]', err.message);
-    return res.status(500).json({ ok: false, error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+    // If the response already went out, there's nothing left to do but log --
+    // TODO(#6): this is exactly the case a Slack failure alert needs to cover.
   }
 });
 
