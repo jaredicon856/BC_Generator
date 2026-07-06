@@ -28,7 +28,17 @@ A full-stack web app that generates a complete podcast guest prospecting profile
    dedupe keys are stored with a 30-day TTL, comfortably longer than the
    real gap between Strategy Call 1 and Strategy Call 2.
 
-3. **Run the server**
+3. **Slack delivery**
+   ```bash
+   SLACK_BOT_TOKEN=xoxb-...
+   SLACK_CHANNEL_ID=...              # used for both phases if the specific ones below aren't set
+   SLACK_CHANNEL_AUTHORITY_DECK=...  # optional -- overrides SLACK_CHANNEL_ID for Phase 1 deliveries
+   SLACK_CHANNEL_BATTLECARD=...      # optional -- overrides SLACK_CHANNEL_ID for Phase 2 deliveries
+   ```
+   The bot must be invited to whichever channel(s) you use (`/invite @YourBotName`) --
+   `chat:write` alone (without `chat:write.public`) only lets it post where it's a member.
+
+4. **Run the server**
    ```bash
    npm start
    # or for auto-reload during development:

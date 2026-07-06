@@ -11,6 +11,7 @@ const { generatePDF }            = require('./src/pdfExport');
 const { generateAuthorityDeckPDF } = require('./src/authorityDeckPdf');
 const { generateVoiceSummary }   = require('./src/voiceSummary');
 const store                      = require('./src/store');
+const slack                      = require('./src/slack');
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -170,23 +171,85 @@ app.post('/api/webhook/fathom', async (req, res) => {
       await store.set(`authorityDeck:${storeKey}`, authorityDeck);
       const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
       console.log(`[webhook/fathom] Phase 1 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes`);
-      // TODO(#6): post pdfBytes to the #authority-deck-delivery Slack channel
-      // once SLACK_BOT_TOKEN + channel ID are configured.
+
+      const authorityChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
+      if (authorityChannel) {
+        try {
+          await slack.uploadFile(
+            authorityChannel,
+            Buffer.from(pdfBytes),
+            `${clientName} - Authority Deck.pdf`,
+            `:page_facing_up: Authority Deck ready for *${clientName}*`
+          );
+        } catch (slackErr) {
+          console.error('[webhook/fathom] Slack Authority Deck upload failed:', slackErr.message);
+        }
+
+        try {
+          const voiceBuffer = await generateVoiceSummary(transcript);
+          await slack.uploadFile(
+            authorityChannel,
+            voiceBuffer,
+            `${clientName} - Call 1 Recap.mp3`,
+            `:studio_microphone: Call recap for *${clientName}*`
+          );
+        } catch (voiceErr) {
+          console.error('[webhook/fathom] Voice summary (Call 1) failed:', voiceErr.message);
+        }
+      } else {
+        console.warn('[webhook/fathom] No SLACK_CHANNEL_AUTHORITY_DECK / SLACK_CHANNEL_ID set -- Authority Deck generated but not delivered anywhere.');
+      }
       return;
     }
 
     // phase === 2
     const authorityDeck = await store.get(`authorityDeck:${storeKey}`);
+    const battlecardChannel = process.env.SLACK_CHANNEL_BATTLECARD || process.env.SLACK_CHANNEL_ID;
+
     if (!authorityDeck) {
       console.error(`[webhook/fathom] No stored Authority Deck for key "${storeKey}" (clientName: "${clientName}") -- Call 2 fired before Call 1 completed, or the clientKey/clientName didn't match between calls.`);
-      // TODO(#6): post an alert to Slack instead of silently generating an
-      // incomplete Battlecard once Slack delivery is wired.
+      if (battlecardChannel) {
+        try {
+          await slack.postMessage(
+            battlecardChannel,
+            `:warning: Generating the Battlecard for *${clientName}* with no stored Authority Deck found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
+          );
+        } catch (slackErr) {
+          console.error('[webhook/fathom] Slack alert (missing Authority Deck) failed:', slackErr.message);
+        }
+      }
     }
 
     const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck });
     const pdfBytes = await generatePDF(battlecard);
     console.log(`[webhook/fathom] Phase 2 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes, missingAuthorityDeck=${!authorityDeck}`);
-    // TODO(#6): post pdfBytes to the Battlecard delivery Slack channel.
+
+    if (battlecardChannel) {
+      try {
+        await slack.uploadFile(
+          battlecardChannel,
+          Buffer.from(pdfBytes),
+          `${clientName} - Battlecard.pdf`,
+          `:dart: Battlecard ready for *${clientName}*`
+        );
+      } catch (slackErr) {
+        console.error('[webhook/fathom] Slack Battlecard upload failed:', slackErr.message);
+      }
+
+      try {
+        const voiceBuffer = await generateVoiceSummary(transcript);
+        await slack.uploadFile(
+          battlecardChannel,
+          voiceBuffer,
+          `${clientName} - Call 2 Recap.mp3`,
+          `:studio_microphone: Call recap for *${clientName}*`
+        );
+      } catch (voiceErr) {
+        console.error('[webhook/fathom] Voice summary (Call 2) failed:', voiceErr.message);
+      }
+    } else {
+      console.warn('[webhook/fathom] No SLACK_CHANNEL_BATTLECARD / SLACK_CHANNEL_ID set -- Battlecard generated but not delivered anywhere.');
+    }
   } catch (err) {
     console.error('[/api/webhook/fathom]', err.message);
     if (!res.headersSent) {
