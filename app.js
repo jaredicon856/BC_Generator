@@ -50,9 +50,15 @@ function sseEvent(res, event, data) {
 function detectCallPhase(title) {
   const t = String(title || '').toLowerCase();
   if (!t.includes('strategy call')) return 'unknown';
-  if (/\b(1|one)\b/.test(t)) return 1;
-  if (/\b(2|two)\b/.test(t)) return 2;
-  return 'unknown';
+  // Real calendar convention has no marker at all on Call 1 (e.g. "ICON
+  // Podcast Strategy Call", "ICON Podcast Strategy Call with Justin Heuff")
+  // and "Part 2" / "2" / "two" explicitly on Call 2 (e.g. "ICON Podcast
+  // Strategy Call Part 2 with Justin Heuff"). Treat any explicit Part-2-style
+  // marker as phase 2, an explicit Part-1-style marker as phase 1, and no
+  // marker at all as phase 1 by default (it's the first call in the series).
+  if (/\bpart\s*2\b/.test(t) || /\b(2|two)\b/.test(t)) return 2;
+  if (/\bpart\s*1\b/.test(t) || /\b(1|one)\b/.test(t)) return 1;
+  return 1;
 }
 
 
