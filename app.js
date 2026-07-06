@@ -24,6 +24,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // disabled — convenient for local dev, but never deploy publicly without it.
 const APP_PASSWORD = process.env.APP_PASSWORD || '';
 app.use('/api', (req, res, next) => {
+  // The Fathom webhook authenticates with its own x-webhook-secret header
+  // (checked inside its own route handler) -- it's called by Zapier/Make,
+  // not a browser with the access code, so it's exempt from this gate.
+  if (req.path === '/webhook/fathom') return next();
   if (!APP_PASSWORD) return next();
   const provided = req.get('x-access-code') || '';
   if (provided === APP_PASSWORD) return next();
