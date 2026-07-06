@@ -12,6 +12,7 @@ const { generateAuthorityDeckPDF } = require('./src/authorityDeckPdf');
 const { generateVoiceSummary }   = require('./src/voiceSummary');
 const store                      = require('./src/store');
 const slack                      = require('./src/slack');
+const { waitUntil }              = require('@vercel/functions');
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -133,132 +134,144 @@ app.post('/api/webhook/fathom', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'Invalid or missing webhook secret' });
   }
 
+  const { meetingTitle, clientName, clientKey, transcript, recordingId, presentedDate } = req.body || {};
+
+  if (!meetingTitle || !clientName || !transcript) {
+    return res.status(400).json({ ok: false, error: 'meetingTitle, clientName, and transcript are required' });
+  }
+
+  // clientKey should be the client's email from Fathom's attendee data --
+  // stable across both calls. Falls back to a normalized clientName if no
+  // email is available, but that's the less reliable option (see
+  // normalizeKey comment above).
+  const storeKey = normalizeKey(clientKey || clientName);
+
+  // Express 4 doesn't auto-catch rejected promises in async route handlers,
+  // so this dedupe check (a real network call to Redis) needs its own
+  // try/catch -- otherwise a transient Redis error here would just hang
+  // the request instead of returning a clean 500.
+  let alreadyProcessed = false;
   try {
-    const { meetingTitle, clientName, clientKey, transcript, recordingId, presentedDate } = req.body || {};
+    alreadyProcessed = recordingId ? await store.has(`processed:${recordingId}`) : false;
+  } catch (err) {
+    console.error('[webhook/fathom] Dedupe check failed:', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+  if (alreadyProcessed) {
+    return res.json({ ok: true, skipped: true, reason: 'recording already processed' });
+  }
 
-    if (!meetingTitle || !clientName || !transcript) {
-      return res.status(400).json({ ok: false, error: 'meetingTitle, clientName, and transcript are required' });
-    }
+  const phase = detectCallPhase(meetingTitle);
+  if (phase === 'unknown') {
+    console.warn(`[webhook/fathom] Could not detect call phase from title: "${meetingTitle}" -- skipping`);
+    return res.json({ ok: true, skipped: true, reason: 'title did not match "Strategy Call 1/2" pattern' });
+  }
 
-    // clientKey should be the client's email from Fathom's attendee data --
-    // stable across both calls. Falls back to a normalized clientName if no
-    // email is available, but that's the less reliable option (see
-    // normalizeKey comment above).
-    const storeKey = normalizeKey(clientKey || clientName);
+  // Respond to Zapier/Make right away -- Claude generation + PDF rendering
+  // can take well past what a webhook client is willing to wait for. The
+  // actual work happens in processFathomCall below, registered with
+  // waitUntil so Vercel explicitly keeps this invocation alive until that
+  // promise settles (up to maxDuration). Just not awaiting it before
+  // responding is NOT sufficient on Vercel -- the platform can freeze the
+  // execution environment right after the response is sent otherwise, with
+  // no error thrown. waitUntil is the actual supported mechanism for this.
+  res.json({ ok: true, accepted: true, phase, clientName, storeKey });
 
-    if (recordingId && (await store.has(`processed:${recordingId}`))) {
-      return res.json({ ok: true, skipped: true, reason: 'recording already processed' });
-    }
+  waitUntil(
+    processFathomCall({ phase, clientName, storeKey, transcript, presentedDate, recordingId }).catch((err) => {
+      console.error('[webhook/fathom] Background processing failed:', err.message);
+    })
+  );
+});
 
-    const phase = detectCallPhase(meetingTitle);
-    if (phase === 'unknown') {
-      console.warn(`[webhook/fathom] Could not detect call phase from title: "${meetingTitle}" -- skipping`);
-      return res.json({ ok: true, skipped: true, reason: 'title did not match "Strategy Call 1/2" pattern' });
-    }
+async function processFathomCall({ phase, clientName, storeKey, transcript, presentedDate, recordingId }) {
+  if (recordingId) await store.set(`processed:${recordingId}`, true);
 
-    // Respond to Zapier/Make right away. Claude generation + PDF rendering
-    // can take well past what a webhook client is willing to wait for
-    // (30-60+ seconds is common), even though Vercel itself allows up to
-    // 300s for this function. Acknowledge receipt now; the actual work
-    // continues below after the response is sent -- Vercel keeps this
-    // invocation alive until the promise chain settles or maxDuration hits.
-    res.json({ ok: true, accepted: true, phase, clientName, storeKey });
+  if (phase === 1) {
+    const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
+    await store.set(`authorityDeck:${storeKey}`, authorityDeck);
+    const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
+    console.log(`[webhook/fathom] Phase 1 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes`);
 
-    if (recordingId) await store.set(`processed:${recordingId}`, true);
-
-    if (phase === 1) {
-      const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
-      await store.set(`authorityDeck:${storeKey}`, authorityDeck);
-      const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
-      console.log(`[webhook/fathom] Phase 1 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes`);
-
-      const authorityChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
-      if (authorityChannel) {
-        try {
-          await slack.uploadFile(
-            authorityChannel,
-            Buffer.from(pdfBytes),
-            `${clientName} - Authority Deck.pdf`,
-            `:page_facing_up: Authority Deck ready for *${clientName}*`
-          );
-        } catch (slackErr) {
-          console.error('[webhook/fathom] Slack Authority Deck upload failed:', slackErr.message);
-        }
-
-        try {
-          const voiceBuffer = await generateVoiceSummary(transcript);
-          await slack.uploadFile(
-            authorityChannel,
-            voiceBuffer,
-            `${clientName} - Call 1 Recap.mp3`,
-            `:studio_microphone: Call recap for *${clientName}*`
-          );
-        } catch (voiceErr) {
-          console.error('[webhook/fathom] Voice summary (Call 1) failed:', voiceErr.message);
-        }
-      } else {
-        console.warn('[webhook/fathom] No SLACK_CHANNEL_AUTHORITY_DECK / SLACK_CHANNEL_ID set -- Authority Deck generated but not delivered anywhere.');
-      }
-      return;
-    }
-
-    // phase === 2
-    const authorityDeck = await store.get(`authorityDeck:${storeKey}`);
-    const battlecardChannel = process.env.SLACK_CHANNEL_BATTLECARD || process.env.SLACK_CHANNEL_ID;
-
-    if (!authorityDeck) {
-      console.error(`[webhook/fathom] No stored Authority Deck for key "${storeKey}" (clientName: "${clientName}") -- Call 2 fired before Call 1 completed, or the clientKey/clientName didn't match between calls.`);
-      if (battlecardChannel) {
-        try {
-          await slack.postMessage(
-            battlecardChannel,
-            `:warning: Generating the Battlecard for *${clientName}* with no stored Authority Deck found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
-          );
-        } catch (slackErr) {
-          console.error('[webhook/fathom] Slack alert (missing Authority Deck) failed:', slackErr.message);
-        }
-      }
-    }
-
-    const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck });
-    const pdfBytes = await generatePDF(battlecard);
-    console.log(`[webhook/fathom] Phase 2 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes, missingAuthorityDeck=${!authorityDeck}`);
-
-    if (battlecardChannel) {
+    const authorityChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
+    if (authorityChannel) {
       try {
         await slack.uploadFile(
-          battlecardChannel,
+          authorityChannel,
           Buffer.from(pdfBytes),
-          `${clientName} - Battlecard.pdf`,
-          `:dart: Battlecard ready for *${clientName}*`
+          `${clientName} - Authority Deck.pdf`,
+          `:page_facing_up: Authority Deck ready for *${clientName}*`
         );
       } catch (slackErr) {
-        console.error('[webhook/fathom] Slack Battlecard upload failed:', slackErr.message);
+        console.error('[webhook/fathom] Slack Authority Deck upload failed:', slackErr.message);
       }
 
       try {
         const voiceBuffer = await generateVoiceSummary(transcript);
         await slack.uploadFile(
-          battlecardChannel,
+          authorityChannel,
           voiceBuffer,
-          `${clientName} - Call 2 Recap.mp3`,
+          `${clientName} - Call 1 Recap.mp3`,
           `:studio_microphone: Call recap for *${clientName}*`
         );
       } catch (voiceErr) {
-        console.error('[webhook/fathom] Voice summary (Call 2) failed:', voiceErr.message);
+        console.error('[webhook/fathom] Voice summary (Call 1) failed:', voiceErr.message);
       }
     } else {
-      console.warn('[webhook/fathom] No SLACK_CHANNEL_BATTLECARD / SLACK_CHANNEL_ID set -- Battlecard generated but not delivered anywhere.');
+      console.warn('[webhook/fathom] No SLACK_CHANNEL_AUTHORITY_DECK / SLACK_CHANNEL_ID set -- Authority Deck generated but not delivered anywhere.');
     }
-  } catch (err) {
-    console.error('[/api/webhook/fathom]', err.message);
-    if (!res.headersSent) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-    // If the response already went out, there's nothing left to do but log --
-    // TODO(#6): this is exactly the case a Slack failure alert needs to cover.
+    return;
   }
-});
+
+  // phase === 2
+  const authorityDeck = await store.get(`authorityDeck:${storeKey}`);
+  const battlecardChannel = process.env.SLACK_CHANNEL_BATTLECARD || process.env.SLACK_CHANNEL_ID;
+
+  if (!authorityDeck) {
+    console.error(`[webhook/fathom] No stored Authority Deck for key "${storeKey}" (clientName: "${clientName}") -- Call 2 fired before Call 1 completed, or the clientKey/clientName didn't match between calls.`);
+    if (battlecardChannel) {
+      try {
+        await slack.postMessage(
+          battlecardChannel,
+          `:warning: Generating the Battlecard for *${clientName}* with no stored Authority Deck found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
+        );
+      } catch (slackErr) {
+        console.error('[webhook/fathom] Slack alert (missing Authority Deck) failed:', slackErr.message);
+      }
+    }
+  }
+
+  const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck });
+  const pdfBytes = await generatePDF(battlecard);
+  console.log(`[webhook/fathom] Phase 2 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes, missingAuthorityDeck=${!authorityDeck}`);
+
+  if (battlecardChannel) {
+    try {
+      await slack.uploadFile(
+        battlecardChannel,
+        Buffer.from(pdfBytes),
+        `${clientName} - Battlecard.pdf`,
+        `:dart: Battlecard ready for *${clientName}*`
+      );
+    } catch (slackErr) {
+      console.error('[webhook/fathom] Slack Battlecard upload failed:', slackErr.message);
+    }
+
+    try {
+      const voiceBuffer = await generateVoiceSummary(transcript);
+      await slack.uploadFile(
+        battlecardChannel,
+        voiceBuffer,
+        `${clientName} - Call 2 Recap.mp3`,
+        `:studio_microphone: Call recap for *${clientName}*`
+      );
+    } catch (voiceErr) {
+      console.error('[webhook/fathom] Voice summary (Call 2) failed:', voiceErr.message);
+    }
+  } else {
+    console.warn('[webhook/fathom] No SLACK_CHANNEL_BATTLECARD / SLACK_CHANNEL_ID set -- Battlecard generated but not delivered anywhere.');
+  }
+}
 
 // ── POST /api/generate-authority-deck ──────────────────
 app.post('/api/generate-authority-deck', async (req, res) => {
