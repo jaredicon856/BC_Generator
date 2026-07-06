@@ -68,15 +68,20 @@ Once a battlecard is generated, the **Export PDF** button in the top-right activ
 
 ```
 podcast-battlecard/
-├── .env                    ← ANTHROPIC_API_KEY goes here
+├── .env                       ← ANTHROPIC_API_KEY goes here
 ├── package.json
-├── app.js                  ← Express server, three API routes
+├── app.js                     ← Express server, API routes
 ├── src/
-│   ├── generator.js        ← /api/generate — calls Claude, returns JSON battlecard
-│   ├── brandParser.js      ← /api/brand — extracts hex colors from brand guide
-│   └── pdfExport.js        ← /api/export-pdf — builds PDF with pdf-lib
+│   ├── generator.js           ← /api/generate — calls Claude, returns JSON battlecard
+│   │                            (accepts an optional `authorityDeck` input for continuity
+│   │                             from a client's Phase 1 Authority Deck)
+│   ├── authorityDeckGenerator.js ← /api/generate-authority-deck — Phase 1 output, calls Claude
+│   ├── authorityDeckPdf.js    ← /api/export-authority-pdf — builds the Authority Deck PDF
+│   ├── pitchGenerator.js      ← /api/generate-pitch — calls Claude, returns JSON pitch
+│   ├── brandParser.js         ← /api/brand — extracts hex colors from brand guide
+│   └── pdfExport.js           ← /api/export-pdf — builds the Battlecard PDF with pdf-lib
 └── public/
-    └── index.html          ← Full frontend (self-contained HTML/CSS/JS)
+    └── index.html             ← Full frontend (self-contained HTML/CSS/JS)
 ```
 
 ---
@@ -85,6 +90,8 @@ podcast-battlecard/
 
 | Method | Route | Description |
 |--------|-------|-------------|
+| POST | `/api/generate-authority-deck` | Phase 1. Accepts Strategy Call 1 inputs (client name, podcast/business name, niche, geography, ideal buyer, offers, referral partners, transcript), returns `{ ok, authorityDeck }` |
+| POST | `/api/export-authority-pdf` | Accepts `{ authorityDeck }` JSON, returns the branded Authority Deck PDF |
 | POST | `/api/generate` | Accepts form inputs as JSON, returns `{ ok, battlecard }` |
 | POST | `/api/brand` | Accepts `multipart/form-data` with `brandFile` and/or `brandText`, returns `{ ok, colors }` |
 | POST | `/api/export-pdf` | Accepts `{ battlecard, colors }` JSON, returns PDF file |

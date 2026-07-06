@@ -8,6 +8,7 @@ PRE-PROCESSING:
 Analyze the full input before generating any output.
 If a call transcript is provided, treat it as the primary source of truth.
 If a Figma PDF is provided, extract the offer stack directly from it — names, formats, prices, and transformations as written.
+If an Authority Deck (from an earlier Strategy Call 1) is provided, treat it as established context — it already reflects an approved strategy for this client. Use it for continuity (offer stack, ideal client, referral partner categories, positioning) rather than re-deriving those from scratch. The call transcript for THIS call is still primary for anything new or updated since the Authority Deck was produced.
 Extract offer stack, buyer signals, referral partner types, and disqualifiers
 directly from what the host said. Do not override their words with assumptions.
 If no transcript, derive everything from the structured inputs.
@@ -110,6 +111,7 @@ async function generateBattlecard(inputs, onProgress) {
     transcript,
     icpListNeeded,
     figmaPdf,
+    authorityDeck,
   } = inputs;
 
   const textContent = `
@@ -119,6 +121,7 @@ Niche / Topic Focus: ${niche || '(not provided)'}
 Geography: ${geography || 'North America'}
 ICP List Needed: ${icpListNeeded ? 'Yes' : 'No'}
 ${figmaPdf ? 'Figma PDF: attached — extract offer stack from it.' : ''}
+${authorityDeck ? `Authority Deck (Strategy Call 1 output — established context, use for continuity):\n${JSON.stringify(authorityDeck)}` : ''}
 
 ${(offers && offers.length) ? `Manual Offer Stack (use only if Figma PDF not provided or incomplete):
 ${offers.map((o, i) => `  ${i + 1}. Name: ${o.name} | Format: ${o.format} | Price: ${o.price} | Transformation: ${o.transformation}`).join('\n')}` : ''}

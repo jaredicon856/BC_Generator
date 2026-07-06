@@ -4,9 +4,11 @@ const express = require('express');
 const multer  = require('multer');
 const path    = require('path');
 
-const { generateBattlecard } = require('./src/generator');
-const { generatePitch }      = require('./src/pitchGenerator');
-const { generatePDF }        = require('./src/pdfExport');
+const { generateBattlecard }     = require('./src/generator');
+const { generatePitch }          = require('./src/pitchGenerator');
+const { generateAuthorityDeck }  = require('./src/authorityDeckGenerator');
+const { generatePDF }            = require('./src/pdfExport');
+const { generateAuthorityDeckPDF } = require('./src/authorityDeckPdf');
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -80,6 +82,54 @@ app.post('/api/generate-pitch', async (req, res) => {
     sseEvent(res, 'error', { error: err.message });
   } finally {
     res.end();
+  }
+});
+
+// ── POST /api/generate-authority-deck ──────────────────
+app.post('/api/generate-authority-deck', async (req, res) => {
+  startSSE(res);
+  try {
+    let offers = [];
+    try { offers = req.body.offers ? JSON.parse(req.body.offers) : []; } catch (_) {}
+
+    const inputs = {
+      clientName:       req.body.clientName       || '',
+      podcastName:      req.body.podcastName      || '',
+      niche:            req.body.niche            || '',
+      geography:        req.body.geography        || 'North America',
+      idealBuyer:       req.body.idealBuyer       || '',
+      referralPartners: req.body.referralPartners || '',
+      transcript:       req.body.transcript       || '',
+      presentedDate:    req.body.presentedDate    || '',
+      offers,
+    };
+
+    const authorityDeck = await generateAuthorityDeck(inputs, (tokens) => sseEvent(res, 'progress', { tokens }));
+    sseEvent(res, 'done', { authorityDeck });
+  } catch (err) {
+    console.error('[/api/generate-authority-deck]', err.message);
+    sseEvent(res, 'error', { error: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ── POST /api/export-authority-pdf ─────────────────────
+app.post('/api/export-authority-pdf', async (req, res) => {
+  try {
+    const { authorityDeck } = req.body;
+    if (!authorityDeck) return res.status(400).json({ ok: false, error: 'authorityDeck required' });
+
+    const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
+    const clientSlug = (authorityDeck.meta?.clientName || 'authority-deck')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${clientSlug}-authority-deck.pdf"`);
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    console.error('[/api/export-authority-pdf]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
