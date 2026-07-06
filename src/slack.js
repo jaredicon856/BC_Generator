@@ -33,10 +33,14 @@ async function postMessage(channelId, text) {
  * this pipeline we always want it shared.
  */
 async function uploadFile(channelId, buffer, filename, initialComment) {
+  // getUploadURLExternal is documented as accepting JSON, but in practice the
+  // edge upload service reliably returns invalid_arguments for a JSON body.
+  // Form-encoding it is the version that actually works.
+  const form = new URLSearchParams({ filename, length: String(buffer.length) });
   const getUrlRes = await fetch(`${SLACK_API}/files.getUploadURLExternal`, {
     method: 'POST',
-    headers: { ...authHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename, length: buffer.length }),
+    headers: { ...authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
   });
   const getUrlData = await getUrlRes.json();
   if (!getUrlData.ok) throw new Error(`Slack files.getUploadURLExternal failed: ${getUrlData.error}`);
