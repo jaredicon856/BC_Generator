@@ -200,7 +200,7 @@ async function processFathomCall({ phase, clientName, storeKey, transcript, pres
           authorityChannel,
           Buffer.from(pdfBytes),
           `${clientName} - Authority Deck.pdf`,
-          `:page_facing_up: Authority Deck ready for *${clientName}*`
+          `<!channel> :page_facing_up: *Phase 1 complete* -- Authority Deck ready for *${clientName}* (key: ${storeKey})`
         );
       } catch (slackErr) {
         console.error('[webhook/fathom] Slack Authority Deck upload failed:', slackErr.message);
@@ -212,7 +212,7 @@ async function processFathomCall({ phase, clientName, storeKey, transcript, pres
           authorityChannel,
           voiceBuffer,
           `${clientName} - Call 1 Recap.mp3`,
-          `:studio_microphone: Call recap for *${clientName}*`
+          `<!channel> :studio_microphone: *Phase 1* -- Call 1 recap for *${clientName}*`
         );
       } catch (voiceErr) {
         console.error('[webhook/fathom] Voice summary (Call 1) failed:', voiceErr.message);
@@ -233,7 +233,7 @@ async function processFathomCall({ phase, clientName, storeKey, transcript, pres
       try {
         await slack.postMessage(
           battlecardChannel,
-          `:warning: Generating the Battlecard for *${clientName}* with no stored Authority Deck found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
+          `<!channel> :warning: *Phase 2* -- Generating the Battlecard for *${clientName}* with no stored Authority Deck found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
         );
       } catch (slackErr) {
         console.error('[webhook/fathom] Slack alert (missing Authority Deck) failed:', slackErr.message);
@@ -251,7 +251,7 @@ async function processFathomCall({ phase, clientName, storeKey, transcript, pres
         battlecardChannel,
         Buffer.from(pdfBytes),
         `${clientName} - Battlecard.pdf`,
-        `:dart: Battlecard ready for *${clientName}*`
+        `<!channel> :dart: *Phase 2 complete* -- Battlecard ready for *${clientName}* (key: ${storeKey})`
       );
     } catch (slackErr) {
       console.error('[webhook/fathom] Slack Battlecard upload failed:', slackErr.message);
@@ -263,7 +263,7 @@ async function processFathomCall({ phase, clientName, storeKey, transcript, pres
         battlecardChannel,
         voiceBuffer,
         `${clientName} - Call 2 Recap.mp3`,
-        `:studio_microphone: Call recap for *${clientName}*`
+        `<!channel> :studio_microphone: *Phase 2* -- Call 2 recap for *${clientName}*`
       );
     } catch (voiceErr) {
       console.error('[webhook/fathom] Voice summary (Call 2) failed:', voiceErr.message);
