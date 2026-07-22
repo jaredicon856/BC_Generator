@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ICON Strategy Guide — Project ICON</title>
+<title>ICON Podcast Strategy Guide — Project ICON</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -1236,8 +1236,25 @@
   #view-strategy.active { display: flex; }
   .view-scroll { flex: 1; overflow-y: auto; padding: 32px 40px 60px; }
 
-  /* ── Authority Deck wizard ──────────────────────────── */
+  /* ── Authority Codex wizard ─────────────────────────── */
   .wizard { display: flex; flex-direction: column; height: 100%; }
+  /* Package selector */
+  .pkg-select { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 900px) { .pkg-select { grid-template-columns: repeat(2, 1fr); } }
+  .pkg-opt {
+    display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+    background: #fff; border: 1px solid var(--brand-border); border-radius: 8px; padding: 12px 13px;
+    transition: border-color .12s, box-shadow .12s, background .12s;
+  }
+  .pkg-opt:hover { border-color: var(--brand-accent-mid, #b9902f); }
+  .pkg-opt.active {
+    border-color: var(--brand-accent); background: var(--brand-accent-soft, #fbf6e9);
+    box-shadow: 0 0 0 1px var(--brand-accent);
+  }
+  .pkg-opt .pkg-name { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--brand-text); }
+  .pkg-opt .pkg-meta { font-size: 11px; font-weight: 600; letter-spacing: .3px; color: var(--brand-accent-mid, #b9902f); }
+  .pkg-opt .pkg-pillars { font-size: 11.5px; color: var(--brand-muted); line-height: 1.35; }
+  @media (max-width: 720px) { .pkg-select { grid-template-columns: 1fr; } }
   .wizard-steps {
     display: flex;
     gap: 8px;
@@ -1367,7 +1384,7 @@
   .mc-btn.danger:hover { border-color: #c62828; }
   .memory-empty { font-size: 13px; color: var(--brand-muted); padding: 30px 0; }
 
-  /* ── Strategy: Authority Deck banner ────────────────── */
+  /* ── Strategy: Authority Codex banner ────────────────── */
   #deck-banner { border-radius: 8px; padding: 11px 14px; font-size: 12.5px; line-height: 1.5; }
   #deck-banner.found { background: #eef7ee; border: 1px solid #9ccc9c; color: #2e5e2e; }
   #deck-banner.missing { background: #fff8e6; border: 1px solid #e9bf5e; color: #7a5a12; }
@@ -1393,8 +1410,8 @@
 
 <!-- ── Stage switcher ─────────────────────────────────── -->
 <nav id="stage-switcher">
-  <button class="stage-btn active" data-view="authority"><span class="stage-num">1</span>Authority Deck</button>
-  <button class="stage-btn" data-view="strategy"><span class="stage-num">2</span>Strategy Guide</button>
+  <button class="stage-btn active" data-view="authority"><span class="stage-num">1</span>Authority Codex</button>
+  <button class="stage-btn" data-view="strategy"><span class="stage-num">2</span>Podcast Strategy Guide</button>
   <button class="stage-btn stage-btn-right" data-view="memory">Memory Bank</button>
   <button class="stage-btn" data-view="settings">⚙ Settings</button>
 </nav>
@@ -1415,8 +1432,37 @@
 
         <!-- Step 1 — Inputs -->
         <div class="wz-panel active" id="wz-1">
-          <h2>New Authority Deck</h2>
-          <p class="wz-hint">Built from Strategy Call #1. Paste the Fathom transcript below — it's the source of truth. The client name and email are used to save this deck to the Memory Bank so Stage 2 can pull it later.</p>
+          <h2>New Authority Codex</h2>
+          <p class="wz-hint">Built from Strategy Call #1. Paste the Fathom transcript below — it's the source of truth. The client name and email are used to save this codex to the Memory Bank so Stage 2 can pull it later.</p>
+          <div class="wz-field">
+            <label>Package <span style="opacity:.5;text-transform:none;letter-spacing:0">(scopes which sections the codex builds)</span></label>
+            <div class="pkg-select" id="authority-package" data-value="accelerator">
+              <button type="button" class="pkg-opt" data-pkg="podcast">
+                <span class="pkg-name">ICON Podcast</span>
+                <span class="pkg-meta">$10k · 180 days</span>
+                <span class="pkg-pillars">Podcast</span>
+              </button>
+              <button type="button" class="pkg-opt active" data-pkg="accelerator">
+                <span class="pkg-name">ICON Accelerator</span>
+                <span class="pkg-meta">$19k · 180 days</span>
+                <span class="pkg-pillars">Book · Podcast · Press · Stage</span>
+              </button>
+              <button type="button" class="pkg-opt" data-pkg="ecosystem">
+                <span class="pkg-name">Authority Ecosystem</span>
+                <span class="pkg-meta">$30k · 12 months</span>
+                <span class="pkg-pillars">Book · Podcast · Press · Stage · Community</span>
+              </button>
+              <button type="button" class="pkg-opt" data-pkg="custom">
+                <span class="pkg-name">Custom</span>
+                <span class="pkg-meta">Build to fit</span>
+                <span class="pkg-pillars">You pick the deliverables</span>
+              </button>
+            </div>
+          </div>
+          <div class="wz-field" id="authority-custom-wrap" style="display:none">
+            <label>Custom Deliverables <span style="opacity:.5;text-transform:none;letter-spacing:0">(what is this client actually getting? Claude builds only the matching sections)</span></label>
+            <input type="text" id="authority-custom" placeholder="e.g. Book + Podcast + Community — or paste the deliverables list" />
+          </div>
           <div class="wz-grid">
             <div class="form-group">
               <label>Client Name <span class="wz-req">*</span></label>
@@ -1480,7 +1526,7 @@
         <div class="wz-panel" id="wz-3">
           <div class="deck-saved-bar" id="deck-saved-bar"></div>
           <div class="wz-actions" style="margin-top:0;margin-bottom:18px">
-            <button class="wz-btn" id="btn-use-in-strategy">Use in Strategy Guide →</button>
+            <button class="wz-btn" id="btn-use-in-strategy">Use in Podcast Strategy Guide →</button>
             <button class="wz-btn wz-btn-ghost" id="btn-download-pdf">Download PDF</button>
             <button class="wz-btn wz-btn-ghost" id="btn-download-doc">Download .doc</button>
             <button class="wz-btn wz-btn-ghost" id="btn-download-md">Download .md</button>
@@ -1498,7 +1544,7 @@
   <section id="view-memory" class="view">
     <div class="view-scroll">
       <h2>Memory Bank</h2>
-      <p class="memory-hint">Every Authority Deck you generate is saved here, keyed by client email + name. Stage 2 pulls a client's deck automatically to build their Strategy Guide.</p>
+      <p class="memory-hint">Every Authority Codex you generate is saved here, keyed by client email + name. Stage 2 pulls a client's deck automatically to build their Podcast Strategy Guide.</p>
       <div class="memory-list" id="memory-list"><div class="memory-empty">Loading…</div></div>
     </div>
   </section>
@@ -1523,12 +1569,12 @@
     </div>
 
     <div class="divider"></div>
-    <div class="form-section-title">Authority Deck (Stage 1)</div>
+    <div class="form-section-title">Authority Codex (Stage 1)</div>
     <div id="deck-banner" class="missing">
       <span class="db-title">Checking Memory Bank…</span>
-      Enter the client's name or email to pull their saved Authority Deck.
+      Enter the client's name or email to pull their saved Authority Codex.
     </div>
-    <textarea id="deck-upload" placeholder="No saved deck? Paste the client's Authority Deck here to use it as context." style="display:none"></textarea>
+    <textarea id="deck-upload" placeholder="No saved deck? Paste the client's Authority Codex here to use it as context." style="display:none"></textarea>
 
     <div class="divider"></div>
 
@@ -1630,7 +1676,7 @@
         <button class="pitch-mode-btn" data-mode="manual">✏️ Manual</button>
       </div>
 
-      <p class="pitch-mode-hint" id="pitch-mode-hint">Claude infers everything from the battlecard and transcript.</p>
+      <p class="pitch-mode-hint" id="pitch-mode-hint">Claude infers everything from the podcast strategy guide and transcript.</p>
 
       <!-- Manual fields (mode: manual) -->
       <div id="pitch-manual-section" style="display:none">
@@ -1653,7 +1699,7 @@
 
     <div id="error-banner"></div>
 
-    <button id="btn-generate">Generate Battlecard</button>
+    <button id="btn-generate">Generate Podcast Strategy Guide</button>
     <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
 
   </aside>
@@ -1665,7 +1711,7 @@
     <div id="loading-overlay">
       <div class="loading-icon">🎙️</div>
       <div>
-        <div class="loading-title" id="loading-title">Building Battlecard</div>
+        <div class="loading-title" id="loading-title">Building Podcast Strategy Guide</div>
         <div class="loading-step" id="loading-step-label">Analyzing inputs…</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
@@ -1688,8 +1734,8 @@
       <!-- Empty state shown before generation -->
       <div id="empty-state">
         <div class="icon">🎙️</div>
-        <h3>No battlecard yet</h3>
-        <p>Fill in the client details and paste the call transcript, then click <strong>Generate Battlecard</strong> to build a complete podcast guest prospecting profile.</p>
+        <h3>No podcast strategy guide yet</h3>
+        <p>Fill in the client details and paste the call transcript, then click <strong>Generate Podcast Strategy Guide</strong> to build a complete podcast guest prospecting profile.</p>
       </div>
 
       <!-- IRP Tab -->
@@ -1774,7 +1820,7 @@ const BATTLECARD_STEPS = [
   'Generating IRP list',
   'Writing booking form',
   'Mapping referral partners',
-  'Finalizing battlecard',
+  'Finalizing strategy guide',
 ];
 
 const PITCH_STEPS = [
@@ -2132,7 +2178,7 @@ function updateModifiedBadge(card, modified) {
 function switchView(name) {
   document.querySelectorAll('.stage-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
-  // Export PDF lives in the header but only applies to the Strategy Guide.
+  // Export PDF lives in the header but only applies to the Podcast Strategy Guide.
   document.getElementById('btn-export-pdf').style.display = name === 'strategy' ? '' : 'none';
   if (name === 'settings') loadSettings();
   if (name === 'memory')   loadMemory();
@@ -2202,6 +2248,20 @@ let authorityExtraction = null;   // parsed JSON from Part B (review surface sou
 let authorityMarkdown   = '';     // assembled deck markdown
 let authoritySaved      = null;   // { key, name, email, updatedAt }
 
+// Package selector — scopes which sections the codex builds.
+const authorityPackageEl = document.getElementById('authority-package');
+const authorityCustomWrap = document.getElementById('authority-custom-wrap');
+authorityPackageEl.querySelectorAll('.pkg-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    authorityPackageEl.querySelectorAll('.pkg-opt').forEach(o => o.classList.remove('active'));
+    opt.classList.add('active');
+    authorityPackageEl.dataset.value = opt.dataset.pkg;
+    authorityCustomWrap.style.display = opt.dataset.pkg === 'custom' ? '' : 'none';
+  });
+});
+function selectedPackage() { return authorityPackageEl.dataset.value || 'accelerator'; }
+function customDeliverables() { return document.getElementById('authority-custom').value.trim(); }
+
 const AUTH_STEPS = [
   'Reading transcript', 'Extracting client + assets', 'Finding named openings',
   'Detecting doc type', 'Building review JSON',
@@ -2240,6 +2300,8 @@ document.getElementById('btn-extract').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clientName: name, clientEmail: email,
+        package: selectedPackage(),
+        customDeliverables: customDeliverables(),
         docTypeHint: '', // deck always combines both parts — no type to choose
         location: document.getElementById('authority-location').value.trim(),
         targetTimeline: document.getElementById('authority-timeline').value.trim(),
@@ -2318,6 +2380,8 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         extraction: json,
+        package: selectedPackage(),
+        customDeliverables: customDeliverables(),
         client: {
           name: document.getElementById('authority-client-name').value.trim(),
           email: document.getElementById('authority-client-email').value.trim(),
@@ -2376,14 +2440,14 @@ const DECK_PDF_CSS = `
   .deck-needs { background: #fdeaea; color: #c62828; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
 `;
 document.getElementById('btn-download-pdf').addEventListener('click', () => {
-  const name = (authoritySaved && authoritySaved.name) || 'Authority Deck';
+  const name = (authoritySaved && authoritySaved.name) || 'Authority Codex';
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
   document.body.appendChild(iframe);
   const doc = iframe.contentDocument;
   doc.open();
   doc.write('<!doctype html><html><head><meta charset="utf-8">'
-    + '<title>' + name.replace(/</g,'&lt;') + ' — Authority Deck</title>'
+    + '<title>' + name.replace(/</g,'&lt;') + ' — Authority Codex</title>'
     + '<link rel="preconnect" href="https://fonts.googleapis.com">'
     + '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">'
     + '<style>' + DECK_PDF_CSS + '</style></head><body>'
@@ -2412,11 +2476,11 @@ const DECK_DOC_CSS = `
   .deck-needs { color: #c62828; font-weight: bold; }
 `;
 document.getElementById('btn-download-doc').addEventListener('click', () => {
-  const name = (authoritySaved && authoritySaved.name) || 'Authority Deck';
+  const name = (authoritySaved && authoritySaved.name) || 'Authority Codex';
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const html =
     "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>"
-    + "<head><meta charset='utf-8'><title>" + name.replace(/</g,'&lt;') + " — Authority Deck</title>"
+    + "<head><meta charset='utf-8'><title>" + name.replace(/</g,'&lt;') + " — Authority Codex</title>"
     + "<style>" + DECK_DOC_CSS + "</style></head><body>"
     + document.getElementById('authority-deck-doc').innerHTML
     + "</body></html>";
@@ -2430,7 +2494,10 @@ document.getElementById('btn-copy-md').addEventListener('click', async () => {
 });
 document.getElementById('btn-new-deck').addEventListener('click', () => {
   authorityExtraction = null; authorityMarkdown = ''; authoritySaved = null;
-  ['authority-client-name','authority-client-email','authority-location','authority-timeline','authority-presented','authority-nextcall','authority-transcript','authority-json'].forEach(id => document.getElementById(id).value = '');
+  ['authority-client-name','authority-client-email','authority-location','authority-timeline','authority-presented','authority-nextcall','authority-transcript','authority-json','authority-custom'].forEach(id => document.getElementById(id).value = '');
+  authorityPackageEl.querySelectorAll('.pkg-opt').forEach(o => o.classList.toggle('active', o.dataset.pkg === 'accelerator'));
+  authorityPackageEl.dataset.value = 'accelerator';
+  authorityCustomWrap.style.display = 'none';
   gotoStep(1);
 });
 document.getElementById('btn-use-in-strategy').addEventListener('click', () => {
@@ -2447,7 +2514,7 @@ async function loadMemory() {
   list.innerHTML = '<div class="memory-empty">Loading…</div>';
   try {
     const data = await (await fetch('/api/memory')).json();
-    if (!data.decks.length) { list.innerHTML = '<div class="memory-empty">No decks saved yet. Generate an Authority Deck in Stage 1 and it will appear here.</div>'; return; }
+    if (!data.decks.length) { list.innerHTML = '<div class="memory-empty">No decks saved yet. Generate an Authority Codex in Stage 1 and it will appear here.</div>'; return; }
     list.innerHTML = '';
     data.decks.forEach(d => {
       const card = document.createElement('div');
@@ -2485,13 +2552,13 @@ function useDeck(d) {
   switchView('strategy');
 }
 async function delDeck(d) {
-  if (!confirm('Delete the saved Authority Deck for "' + (d.name || d.email) + '"? This cannot be undone.')) return;
+  if (!confirm('Delete the saved Authority Codex for "' + (d.name || d.email) + '"? This cannot be undone.')) return;
   await fetch('/api/memory/' + d.key, { method: 'DELETE' });
   loadMemory();
 }
 
 // ══════════════════════════════════════════════════════
-//  STAGE 2 — Authority Deck banner + resolution
+//  STAGE 2 — Authority Codex banner + resolution
 // ══════════════════════════════════════════════════════
 let resolvedDeck = null; // memory record found for the current client
 
@@ -2515,7 +2582,7 @@ async function doDeckLookup() {
   if (!name && !email) {
     resolvedDeck = null;
     banner.className = 'missing';
-    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Deck.';
+    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Codex.';
     upload.style.display = 'none';
     return;
   }
@@ -2526,12 +2593,12 @@ async function doDeckLookup() {
       resolvedDeck = data.deck;
       const when = new Date(data.deck.updatedAt).toLocaleDateString();
       banner.className = 'found';
-      banner.innerHTML = `<span class="db-title">✓ Using ${(data.deck.name || data.deck.email).replace(/</g,'&lt;')}'s Authority Deck</span>Saved ${when}. It will be fed into the Strategy Guide as context.`;
+      banner.innerHTML = `<span class="db-title">✓ Using ${(data.deck.name || data.deck.email).replace(/</g,'&lt;')}'s Authority Codex</span>Saved ${when}. It will be fed into the Podcast Strategy Guide as context.`;
       upload.style.display = 'none'; upload.value = '';
     } else {
       resolvedDeck = null;
       banner.className = 'missing';
-      banner.innerHTML = `<span class="db-title">No saved Authority Deck for this client</span>Generate one in Stage 1, or paste it below to use it now.`;
+      banner.innerHTML = `<span class="db-title">No saved Authority Codex for this client</span>Generate one in Stage 1, or paste it below to use it now.`;
       upload.style.display = '';
     }
   } catch (_) { /* leave banner as-is on transient error */ }
@@ -2548,7 +2615,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
   btn.innerHTML = '<span class="spinner"></span>Generating…';
 
   const progressBar = document.getElementById('progress-bar');
-  showLoading('Building Battlecard', BATTLECARD_STEPS);
+  showLoading('Building Podcast Strategy Guide', BATTLECARD_STEPS);
 
   try {
     const fd = new FormData();
@@ -2597,7 +2664,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     showError('Generation failed: ' + err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Generate Battlecard';
+    btn.textContent = 'Generate Podcast Strategy Guide';
   }
 });
 
@@ -2928,9 +2995,9 @@ document.getElementById('btn-export-pdf').addEventListener('click', async () => 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const slug = (battlecard.meta?.clientName || 'battlecard').toLowerCase().replace(/\s+/g, '-');
+    const slug = (battlecard.meta?.clientName || 'podcast-strategy-guide').toLowerCase().replace(/\s+/g, '-');
     a.href = url;
-    a.download = `${slug}-battlecard.pdf`;
+    a.download = `${slug}-podcast-strategy-guide.pdf`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (err) {
@@ -2948,7 +3015,7 @@ document.getElementById('pitch-builder-toggle').addEventListener('change', funct
 
 // ── Pitch mode selector ────────────────────────────────
 const MODE_HINTS = {
-  ai:     'Claude infers everything from the battlecard and transcript.',
+  ai:     'Claude infers everything from the podcast strategy guide and transcript.',
   manual: 'Fill in the three pitch questions yourself for full control.',
 };
 

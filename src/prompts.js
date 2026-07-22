@@ -216,92 +216,216 @@ And icpSalesPitch:
   "softClose": ""
 }`;
 
-// ── Authority Deck (Stage 1) ───────────────────────────
+// ── Authority Codex (Stage 1) ──────────────────────────
 // Two Claude calls share the HOUSE assets: an EXTRACTION call (transcript →
 // JSON, reviewed & corrected by a human) and a DOCUMENT call (confirmed JSON
 // → markdown deck). NOTE: no ``` fences in these strings — they are JS
 // template literals, so the JSON schema is shown as indented plain text.
-const AUTHORITY_HOUSE = `You are Project ICON's strategy-document generator. From a Fathom call transcript you produce ONE combined client strategy document — the "ICON Authority Deck" — in ICON's house format. Every deck has TWO parts in the same document: PART 1 — BRAND AUTHORITY (positioning), then PART 2 — PODCAST FUNNEL & REFERRAL (the growth engine). Always produce both parts.
+const AUTHORITY_HOUSE = `You are Project ICON's Authority Codex generator. From a Fathom strategy-call transcript you produce ONE client-facing strategy document — THE AUTHORITY CODEX — in ICON's house style. It names who the client is, the category they can own, and the sequenced plan to build their authority platform. Each PACKAGE has its OWN document STRUCTURE; the COVER and SECTION SCAFFOLD for this client's package are provided in the user message as a STRUCTURAL GUIDELINE — what kinds of sections to build and in what order. The House Assets below are the shared craft rules.
+
+# A★. TWO LAYERS — ICON METHOD vs CLIENT STRATEGY (the most important rule).
+- ICON'S REPEATABLE METHOD is the BACKBONE and stays CONSISTENT across every client: the section structure and order, the podcast referral-FUNNEL model (give a partner the stage → convert post-show → turn them into a referral source → revenue), the roadmap PHASE FRAMEWORK, the tiered-ecosystem structure (community → coaching/consulting → done-for-you), and the signature devices. These are what ICON does; apply them the same way every time.
+- The CLIENT'S STRATEGY is the CONTENT that fills that method, and it MUST be reverse-engineered uniquely from THIS client's transcript: the positioning statement, the one-word territory, the client's OWN named framework and its pillars, taglines, the specific tier PRICING and offer content, referral-partner CATEGORIES, brand story, book concept/title, the bespoke subtitle, proof points, and quotes. NEVER carry any of THIS layer over from a reference Codex or from an example in these instructions. If two different clients would get the same positioning, framework name, pillars, tagline, or offer, you have failed — regenerate it from their specifics.
+The reference Codices taught the METHOD (this backbone) by example; you reproduce the method, never their client-specific strategy.
 
 # PART A — HOUSE ASSETS (constant. Never derive these from the transcript.)
 
-## A0. ALTITUDE & LENGTH (most important): Keep the deck HIGH-LEVEL and concise — match the altitude and length of ICON's reference decks. A short punchy paragraph OR a tight table per section, high-value strategic guidance, NOT exhaustive detail. The whole deck should read in a few minutes. Favor a few sharp rows/bullets over long lists. Do not pad.
+## A0. ALTITUDE & VOICE (most important). This is a premium, substantive strategy document — NOT a skim and NOT a data dump. Each section makes a real strategic argument in 1–3 short paragraphs and/or one tight table, then lands a "so what." Register: warm, authoritative, specific, evidence-first. Short declaratives. Confident recommendations, never hype or filler. Refer to the client by full name once, then by first name. Tables carry mechanics; prose carries argument. Match the density and finish of ICON's reference Codices — every sentence earns its place.
 
-## A1. Document scaffold (fixed order — number sections sequentially 01, 02 … across BOTH parts)
-- COVER: "ICON AUTHORITY DECK" / [Client Name] / [3 pillars, pipe-separated] / "Prepared by Project ICON  |  Presented: [Month Year]"
-- 01 EXECUTIVE SUMMARY — 1 short paragraph: frame the brand-positioning gap AND the growth engine, and name the north star (use the reframe in A-ref).
-- (divider) CORE IDENTITY — a small two-column label:value table: Brand Name · Tagline (mark AI-drafted "(Working)") · Mission · Primary Audience · Flagship Direction · Primary Business / Corporate Entity · Book (only if they have one) · North Star.
-- (divider) ═══ PART 1 — BRAND AUTHORITY ═══ then the A2 sections.
-- (divider) ═══ PART 2 — PODCAST FUNNEL & REFERRAL ═══ then the A3 sections.
-- IMPLEMENTATION ROADMAP (A4 — one table, 5 phases spanning both parts).
-- IMMEDIATE ACTION ITEMS → [CLIENT]'S ACTIONS + PROJECT ICON ACTIONS (A5).
-- NEXT STEPS — [DAY TIME TZ] CALL AGENDA (short checklist).
-- FOOTER: PROJECT ICON / projecticon.io / "Confidential — Prepared exclusively for [Client]".
+## A1. STRUCTURE IS PACKAGE-SPECIFIC. The user message contains a COVER spec and a SECTION SCAFFOLD for this client's package. Build the cover exactly as given, then build every listed section in the given order — headed as the scaffold specifies — renumbering sequentially if a CONDITIONAL section is omitted. Do not add sections the scaffold doesn't list, and do not drop sections it does. The scaffold also states this package's roadmap horizon and its package-specific devices (e.g. a Named Method, a Core Identity table, a named Framework, tier pricing) — honor them.
 
-A-ref (reframe, in the summary): "[Client] brings a rare combination... The gap is not [content/credibility/character]. The gap is [alignment/a system]. This strategy fixes that."
+## A2. SIGNATURE DEVICES (shared — this is what makes it read like ICON):
+- PULL-QUOTES: drop the client's ACTUAL words from the intake transcript as callout quotes, attributed "— [Name]" or "— [Name], intake session, [date]" (or a recurring-line attribution). Use 3–5 across the document where they land hardest; close the doc with one Project ICON quote. Client quotes must be REAL (from intake_quotes / the transcript) — never fabricate a client quote.
+- STRATEGIC READ: interpret, don't just describe — every table and audit ends in analysis, not a data dump.
+- RECOMMENDATION LINES: whenever options are offered (taglines, tracks, titles), name a clear recommendation and why.
+- CROSS-REFERENCES: sections reference each other by number ("see Section 08").
 
-## A2. PART 1 — BRAND AUTHORITY sections (keep each tight)
-- THE BRAND STORY — WHY [BRAND NAME]: 2–4 sentences on the name's meaning tied to the client's real story → the line "This is not background. This is the brand." → a CONDITIONAL one-liner spiritual/values note ONLY if the client raised one (omit otherwise).
-- BRAND ARCHITECTURE — ONE NAME, EVERY PLATFORM: one line on the cost of fragmentation → small "PLATFORM ALIGNMENT PLAN" table (Platform / Current State / Target State), one row per platform they use.
-- CONTENT STRATEGY: 4–5 row "CONTENT PILLARS" table (Pillar / Theme / Example) → a one-line posting cadence.
-- PRESS & AUTHORITY — FIXING THE GOOGLE STORY: 1–2 sentences on current vs. desired Google presence → a short "PRESS ACTION PLAN" (3–4 bullets) → a one-line "SEO KEYWORD TARGETS".
-- [FLAGSHIP-GOAL] STRATEGY (title after their north star — e.g. TEDX, KEYNOTE, BOOK): proposed title "(Proposed)" → a compact "STRUCTURE — THE ICON FRAMEWORK" table (Section / Time / Content) → a short requirements checklist.
-- BRAND VOICE & MESSAGING GUIDE: a 5-row IS / IS-NOT table (Dimension / IS / is NOT) → a SHORT bio (1–2 sentences) → a LONG bio (one paragraph).
+## A3. Proof library (inject only on a real match): School-board-onto-podcast "LA client"; Scott Feld 200-parent soccer org.
 
-## A3. PART 2 — PODCAST FUNNEL & REFERRAL sections (keep each tight)
-- THE PODCAST FUNNEL — HOW THE ENGINE WORKS: 1–2 sentences (the host GIVES partners a guest spot instead of asking for their audience) → small FUNNEL STAGES table (Stage / What Happens / Purpose) → the line "Guests become partners, partners become referral sources, and referrals become revenue."
-- IDEAL CLIENT PROFILE: a few bullets on who we fill the funnel for → a one-line "WHO WE AVOID".
-- REFERRAL PARTNER TARGETS: a table (Partner Category / Why They Refer / Notes & Known Openings), grounded in the client's real network.
-- OUTREACH & POST-SHOW CONVERSION: a table (Partner Type / Post-Show Play) → 2–3 bullet "CONVERSION INFRASTRUCTURE".
-- THE [BRAND] ECOSYSTEM — WHERE REFERRALS LAND: a small table (Destination / What It Offers / Status).
+## A4. FACT vs. CREATIVE — THIS DOCUMENT IS CLIENT-FACING; it must read as finished and confident. CREATIVE work (subtitle, positioning statement, one-word territory, taglines, pillars/framework, named method, book concept/title, roadmap framing, bios, offer names) — DRAFT the strongest version and present it as a confident recommendation. Only mark alternatives where the document genuinely offers a choice ("held in reserve", a tagline options table). Do NOT pepper the doc with "(Working)"/"(Proposed)" labels. FACTS (real names, orgs, publications, numbers, prices, quotes, credentials, origin story, proof points) — NEVER invent. If a fact is unknown, either omit it cleanly or write a professional "TBD"; a client must never see "[NEEDS INPUT]" or any red/alarming flag. Pull-quotes must be verbatim from the transcript.`;
 
-## A4. Roadmap: one table, 5 sequential phases (week ranges + a few ✓ tasks each) spanning both the brand build and the funnel launch. Foundation first, scale last.
-## A5. Action-split: client homework (payment/legal/logistics/warm-intros) vs. Project ICON deliverables. End at the scheduled call.
-## A6. Proof library (inject only on a real match): School-board-onto-podcast "LA client"; Scott Feld 200-parent soccer org.
-## A7. Voice: warm, authoritative, specific. Short declaratives. Tables for mechanics. No hype, no filler.
-## A8. Fact vs. creative — THIS DECK IS CLIENT-FACING. NEVER print "[NEEDS INPUT]" or any red/alarming flag anywhere; it looks unfinished. CREATIVE fields (tagline, mission, positioning, pillars, funnel stages, partner categories, conversion plays, flagship title/structure, bios, voice) — DRAFT the strongest concise on-brand version and label it "(Working)"/"(Proposed)"; never blank. FACTS (real names, orgs, publications, numbers, quotes, credentials, origin story) — never invent. When a fact or a date isn't known, write a clean, professional "TBD" (for dates you may write "TBD — set on call"). The deck must always read as finished; a client should never see the words "NEEDS INPUT".`;
+// ── Per-package SECTION SCAFFOLDS ──────────────────────
+// Each package is its own document structure ("logic in a box"). The correct
+// scaffold is injected into the DOCUMENT call's user message by authorityDeck.js.
+// ACCELERATOR is modeled on the Zach Lott reference; ECOSYSTEM from the Jason
+// Yormark + JW Radford references; PODCAST from the Wildman + Saroni references.
+
+// Shared PODCAST STRATEGY depth standard — the podcast strategy must reach this
+// SAME level of detail in ALL THREE packages (never thinned in Accelerator or
+// Ecosystem just because the podcast is one pillar of several). Reused below.
+const PODCAST_SHOW_BLOCK = `THE SHOW — the show concept/name (derived from this client) + WHY THIS CONCEPT WINS + THE EPISODE SPINE (a table of ~5 recurring beats: Beat / Segment / What Happens) + FORMAT (cadence, length, video-first, clip package)`;
+const PODCAST_STRATEGY_DEPTH = `Deliver the podcast strategy at FULL ICON depth — the same detail as the standalone ICON Podcast deck, never thinned. It must include ALL of: (1) ${PODCAST_SHOW_BLOCK}; (2) THE GUEST STRATEGY — the guest engine where you give partners the stage; every guest is an ICP or an IRP (no third kind) + a booking cadence; (3) THE CONVERSION PLAY — ICON's value-first post-show method (the pitch never touches the episode; a debrief 3–5 days after recording): PATH A — ICP (a free preview/demo — the funnel is the demo) and PATH B — IRP (the one-way referral: value for access, never a commission), plus the rules (never pitch during recording; value lands before the ask; one permission question).`;
+
+const SCAFFOLD_ACCELERATOR = `SECTION SCAFFOLD — ICON ACCELERATOR (Book + Podcast + Press + Stage)
+
+COVER (centered stack): "PROJECT ICON" / "AUTHORITY. BUILT." / "THE AUTHORITY CODEX" / [a bespoke subtitle you derive from THIS client's category] / "PREPARED FOR" / [CLIENT NAME, credentials] / [Title/role, Company] / "Version 1.0  |  [use the Presented month/year given in the facts]" / "Confidential — Prepared exclusively for client review".
+
+Build these seventeen sections, headed "SECTION 0N   |   TITLE":
+- 01 EXECUTIVE SUMMARY — 3–4 paragraphs: (a) the verifiable substance the client ALREADY built; (b) the clean opportunity + the open category no one owns; (c) one sentence naming the full build sequence; (d) the governing strategic principle. End with a verbatim client pull-quote.
+- 02 THE AUTHORITY ASSET: WHO [NAME] IS — THE RECORD (bullets of concrete proof); THE PHILOSOPHY (how they operate differently); THE ORGANIC BRAND HOOK (the sentence the market already says about them, as a pull-quote).
+- 03 CURRENT POSITIONING AUDIT — intro, a table (Asset / Current State / Strategic Read), a one-line pattern read.
+- 04 THE MARKET MOMENT — 3 bullets of real trend facts + a closing paragraph on the window/urgency.
+- 05 THE IDEAL AUDIENCE — PRIMARY PROFILE (bullets); a segments table "THE [N] DOORS THEY WALK THROUGH" (Door / Who They Are / What They Need to Hear); SECONDARY AUDIENCES.
+- 06 CORE POSITIONING STATEMENT — the statement as one defensible pull-quote; THE ONE-WORD TERRITORY (contrasted with adjacent figures); WHAT MAKES THE CLAIM DEFENSIBLE (bullets).
+- 07 TAGLINE DIRECTIONS — a 3-row table (Direction / Tagline / Why It Works) + a recommendation line.
+- 08 THE [N] AUTHORITY PILLARS — 4–5 named pillars, each a short paragraph; every future output maps to one.
+- 09 SIGNATURE PROOF POINTS & THE NAMED METHOD — THE PROOF STACK (bullets); THE NAMED METHOD (a trademarked "The [Name] Method™" with a stages table: Stage / What Happens / Public-Facing Language).
+- 10 COMPARABLE AUTHORITY MODELS — intro; a table (Figure / What They Own / What We Borrow / Where [Name] Differs); a composite close.
+- 11 THE BOOK STRATEGY — THE CONCEPT; TITLE DIRECTION (pull-quote title + alternates held in reserve); STRUCTURE (Part One/Two/Three); THE GOAL, STATED HONESTLY; THE SERIES HORIZON.
+- 12 THE COURSE & TRAINING ARM — CONDITIONAL: include ONLY if the client raised course/training/certification ambition; else omit and renumber. Tiers table (Tier / Audience / Product / Timing) + a sequencing paragraph.
+- 13 PODCAST STRATEGY — ${PODCAST_STRATEGY_DEPTH} Frame it for this package as PHASE ONE: THE GUEST CIRCUIT (borrow audiences first; real named shows/openings) → PHASE TWO: THE OWNED SHOW — but the show, spine, guest strategy, and conversion play are all built out in full here.
+- 14 SPEAKING & STAGE STRATEGY — THE STAGE STRATEGY (which rooms — audience-fit over prestige); a signature keynote to develop; a speaker reel / one-pager; a year-one stage goal (and TEDx/flagship-stage target where it fits).
+- 15 THE CONTENT ENGINE — the content problem + fix; THE [PLATFORM] RELAUNCH/LAUNCH; THE LONG GAME (atomization pipeline); THE CADENCE COMMITMENT (specific cadence + capped client time).
+- 16 DIGITAL PRESENCE & BRAND ARCHITECTURE — THE WEBSITE MOMENT; TWO-BRAND ARCHITECTURE table (Brand Layer / Role / What Lives There); SEARCH & REPUTATION BASELINE.
+- 17 THE AUTHORITY ROADMAP & SUCCESS METRICS — a phases table (Phase / Window / The Work), then HOW WE MEASURE SUCCESS (bullets). Close the document with a Project ICON pull-quote.
+
+ROADMAP HORIZON (ICON's backbone phase framework — keep the phases): Foundation → Construction → Arrival, three strategic phases over a ~12–18 month authority-build arc (calendar ranges like Days 0–90 / Months 3–9 / Months 9–18), sequenced so demand never outruns capacity. Keep these phase names; fill each phase's work with THIS client's specifics. This is the build arc, NOT the contract's delivery days. Metrics favor engagement quality, owned email-list growth, book performance, and inbound fit — never raw follower counts.
+PACKAGE DEVICE (structural): a trademarked Named Method™ (Section 09) — its name and stages derived from how THIS client actually works — is central. Flagship = the Book + the stage/keynote strategy.`;
+
+const SCAFFOLD_ECOSYSTEM = `SECTION SCAFFOLD — ICON AUTHORITY ECOSYSTEM (Book + Podcast + Press + Stage + Community)
+
+This is the FULL brand-platform-and-growth-engine build: brand authority + a monetized community with defined revenue tiers + a podcast referral engine + book + press + speaking + execution plan. Synthesized from ICON's Ecosystem reference Codices.
+
+COVER (centered stack): "PROJECT ICON" / "THE AUTHORITY CODEX" / [a bespoke subtitle you derive from THIS client's brand and category] / [CLIENT NAME] / [Title/role, Company] / [this client's own 3 framework pillars, pipe-separated] / "Prepared by Project ICON  |  Presented: [month/year from the facts]" / "Confidential — Prepared exclusively for [Client]".
+
+Build these sixteen sections. Group them under three PART dividers ("PART 1 — BRAND AUTHORITY", "PART 2 — GROWTH ENGINE", "PART 3 — EXECUTION"). Head sections "0N  |  TITLE":
+- 01 EXECUTIVE SUMMARY — the vision: this brand is the whole thing (brand, podcast, book, community, business), built to run without the founder / be sellable; the gap is alignment and a system, not content/credibility/character. Follow the summary with a CORE IDENTITY table (Brand Name / Tagline / Mission / Primary Audience / The Business / Flagship / North Star). End the summary with a positioning-statement pull-quote or a "why this matters now" beat.
+--- PART 1 — BRAND AUTHORITY ---
+- 02 THE BRAND STORY — WHY [BRAND] — the origin story tied to the name's meaning, with a real pull-quote from intake; the guiding principle; the promise. If a name-collision/search issue exists, name it here or in Section 08.
+- 03 BRAND ARCHITECTURE — ONE NAME, EVERY PLATFORM — the brand-owned-channels vs personal-accounts model (built so the brand stays a sellable asset) + a PLATFORM ALIGNMENT PLAN table (Platform / Current State / Target State).
+- 04 THE [BRAND] FRAMEWORK — the named 3-pillar framework that runs through the podcast, book, courses, and keynote — a table (Pillar / The Move / What It Solves) + a line on why it's defensible.
+- 05 CONTENT STRATEGY — CONTENT PILLARS table (Pillar / Theme / Example) + POSTING CADENCE (per platform) + who does what (ICON scripts/edits, client records).
+- 06 PRESS & AUTHORITY — FIXING THE GOOGLE STORY — current search state + a PRESS ACTION PLAN (guest spots, contributed articles, PR campaign, ICON network) + SEO keyword targets.
+- 07 BOOK STRATEGY — title + core promise + STRUCTURE table (Section / Length / Content, "The ICON Framework") + PRODUCTION MILESTONES + primary use (authority proof point + funnel entry, not standalone revenue).
+- 08 BRAND VOICE & MESSAGING — an IS / IS-NOT table (Dimension / IS / is NOT) + SHORT BIO + LONG BIO.
+--- PART 2 — GROWTH ENGINE ---
+- 09 THE PODCAST — THE SHOW & THE ENGINE — ${PODCAST_STRATEGY_DEPTH} In addition, include ICON's give-partners-a-stage FUNNEL STAGES table (Stage / What Happens / Purpose) following ICON's standard arc: Invite → Episode → Post-Show Conversion → Referral → Revenue (backbone model — keep the stages; fill "What Happens / Purpose" with THIS client's offer, audience, and partners). (Sections 11 and 12 then elaborate the referral partners and the operational conversion/CRM infrastructure.)
+- 10 IDEAL CLIENT PROFILE & REVENUE TIERS — the audience specialization + a TIERS table (Tier / Who They Are / What They Need / Pricing / Year-1 Goal) + a one-line WHO WE AVOID.
+- 11 REFERRAL PARTNER TARGETS — a table (Partner Category / Why They Refer / The Opening), grounded in the client's real network; all findable on LinkedIn/Apollo.
+- 12 OUTREACH & POST-SHOW CONVERSION — POST-SHOW PLAYS BY PARTNER TYPE (Partner Type / The Play) + CONVERSION INFRASTRUCTURE (CRM/GHL, affiliate links, LinkedIn automation).
+- 13 THE [BRAND] ECOSYSTEM — WHERE REFERRALS LAND — a table (Destination / What It Offers / Status) covering every tier, the podcast, the book, and the site — the sellable, self-running system.
+--- PART 3 — EXECUTION ---
+- 14 IMPLEMENTATION ROADMAP — a phased table (Phase / Timeline / Key Actions).
+- 15 IMMEDIATE ACTION ITEMS — [CLIENT]'S ACTIONS (bullets) + PROJECT ICON'S ACTIONS (bullets).
+- 16 NEXT STEPS — [DAY] CALL AGENDA — a numbered lock-in checklist for the review call. Close the document with a Project ICON footer line.
+
+ROADMAP HORIZON (ICON's backbone phase framework — keep the phases): Foundation → Content Engine → Launch → Scale Referrals → Authority & Legacy, a phased build over ~12 months (overlapping, weeks-to-months ranges). For a fast start, ICON's compressed 90-day version is: Foundation & Alignment (Days 1–30) → Launch (Days 31–60) → Amplify (Days 61–90). Keep these phase names; fill each phase's Key Actions with THIS client's specifics, and pick the horizon (12-month vs 90-day) the facts imply.
+PACKAGE DEVICES: STRUCTURE that stays consistent — a CORE IDENTITY table (Section 01), the PART dividers, explicit TIER PRICING in the tables (Sections 10 & 13), and a named 3-pillar FRAMEWORK (Section 04) that recurs across the pillars/book/podcast. The framework's NAME and pillar CONTENT are derived from this client; the tier pricing is taken from what THIS client described. The community/tiers monetization engine is the heart of the Ecosystem — build it richly from this client's own offers and audience.`;
+
+const SCAFFOLD_PODCAST = `SECTION SCAFFOLD — ICON PODCAST (Podcast only)
+
+This is the PODCAST FUNNEL & REFERRAL model: the podcast is not a vanity project — it is the top of a referral machine that fills the client's business with clients and partners. Synthesized from ICON's Podcast reference decks.
+
+COVER (centered stack): "PROJECT ICON" / "THE PODCAST AUTHORITY DECK" / [CLIENT NAME  |  Company/Brand] / [a bespoke tagline you derive from this client's show and business] / "Prepared by Project ICON" / "[Presented month/year from the facts]  ·  Confidential".
+
+Build these sections, headed "0N   TITLE" (bar/number style):
+- 01 EXECUTIVE SUMMARY — what the business ALREADY has, what is actually missing (a repeatable way to get in front of qualified buyers AND the people who know them), and the 3–4 things this deck locks in. State the governing principle (the show is never the sales call; conversion happens after the episode, value-first). Where the client has them, add a CORE STRATEGY IDENTITY table (Mission Platform / Book / Primary Business / Ideal Client / Revenue Priority / North Star). End with a client pull-quote.
+- 02 THE OFFER, REVIEWED — CONDITIONAL: include ONLY if the client has a defined product/offer to sharpen for the podcast channel. A VERDICT, a WHAT STAYS LOCKED table (Element / The Call), and numbered UPGRADES. If the client's "offer" is a practice/clinic with no discrete productized offer, OMIT and renumber.
+- 03 THE PODCAST FUNNEL — HOW THE ENGINE WORKS — ICON's backbone funnel model as a stages table (Stage / What Happens / Purpose) following ICON's standard arc: Identify → List Build → Invite → Record → Convert → Nurture (you GIVE partners a stage instead of asking for their audience). Core principle line: guests become partners, partners become referral sources, referrals become revenue.
+- 04 IDEAL CUSTOMER PROFILE (ICP) — a profile table (Dimension / Definition: Who / Business type / The pain / The awareness / The disqualifier) + LAUNCH NICHES (primary/secondary) and/or a WHO WE AVOID line.
+- 05 IDEAL REFERRAL PROFILE (IRP) — REFERRAL PARTNER TARGETS — a table of partner categories (Partner Category / Why They Refer / Notes & Known Openings), grounded in the client's REAL network and named openings + a booking cadence line. ICON rule (backbone): every guest is either an ICP or an IRP — there is no third kind of guest.
+- 06 THE SHOW — the show concept/name (derived from this client) + WHY THIS CONCEPT WINS + THE EPISODE SPINE (a table of ~5 recurring beats: Beat / Segment / What Happens) + FORMAT (cadence, length, video-first, clip package).
+- 07 THE CONVERSION PLAY — ICON's post-show conversion method (backbone: the pitch NEVER touches the episode; a value-first debrief 3–5 days after recording, framed as part of production). THE MECHANISM, then PATH A — ICP (a free preview/demo of the offer — the funnel is the demo) and PATH B — IRP (the ONE-WAY REFERRAL: a free build / value for access, never a commission), then THE RULES (never pitch during recording; value lands before the ask; one permission question per debrief). Give the method a bespoke name derived from the client where natural.
+- 08 THE MONETIZATION MAP — the podcast as one asset feeding several revenue channels: a table (Channel / Mechanism / Value of One Win) + a strategic read. (For a mission/clinic client this doubles as THE [BRAND] ECOSYSTEM — WHERE REFERRALS LAND: Destination / What It Offers / Status.)
+- 09 THE FIRST 90 DAYS — a phased table (Phase / Window / What Ships) + a DAY-90 SCOREBOARD (Metric / Target).
+- 10 IMMEDIATE ACTION ITEMS — [CLIENT]'S ACTIONS (bullets) + PROJECT ICON'S ACTIONS (bullets).
+- 11 NEXT STEPS — [DAY] CALL AGENDA — a numbered lock-in checklist. Close with a Project ICON footer line.
+
+ROADMAP HORIZON (ICON's backbone first-90-days framework — keep the phases): Launch Build (Weeks 1–2) → Record & Bank (Weeks 3–6) → Convert (Weeks 7–12), plus an ongoing scale note. Fill each phase's "What Ships" with THIS client's specifics.
+BACKBONE (fixed ICON method — apply the same every client): the funnel stage model (Identify→List Build→Invite→Record→Convert→Nurture), the two-profile guest rule (every guest is ICP or IRP), the value-first post-show conversion (pitch never touches the episode), the one-way referral (value for access, not commission), the first-90-days phase framework, and the "show is never the sales call" integrity principle.
+DERIVED PER CLIENT: the show name/concept + episode spine content, the ICP definition and niches, the referral-partner categories + their real openings, the offer/pricing specifics, the monetization math, and the bespoke names.`;
+
+const SCAFFOLD_CUSTOM = `SECTION SCAFFOLD — ICON CUSTOM (build to fit the client's actual deliverables)
+
+This client is on a custom package. The user message includes a "CUSTOM DELIVERABLES" line listing exactly what this client is getting (also corroborate against the transcript). YOU compose the Authority Codex — pull ONLY the modules from ICON's MODULE LIBRARY that match those deliverables. This is not a fixed template; assemble it. Apply the two-layer rule (backbone method fixed; all strategy derived from THIS client). If a module's deliverable isn't in scope, leave it out — never invent a pillar the client didn't buy.
+
+COVER (centered stack): "PROJECT ICON" / "THE AUTHORITY CODEX" / [a bespoke subtitle you derive from this client] / [CLIENT NAME, credentials/role, Company] / "Presented: [month/year from the facts]" / "Confidential — Prepared exclusively for [Client]".
+
+ALWAYS INCLUDE (the spine, in this order):
+- 01 EXECUTIVE SUMMARY — what they've built, what's missing, the deliverables this codex covers, and the governing principle; end with a client pull-quote. Add a CORE IDENTITY table when the client has a brand identity to lock.
+- POSITIONING CORE — always: THE IDEAL AUDIENCE / IDEAL CLIENT PROFILE, and a CORE POSITIONING STATEMENT with the one-word territory. Every authority build needs a defined WHO and a defensible claim.
+- (at the end) IMPLEMENTATION ROADMAP (phased, ICON's phase framework), IMMEDIATE ACTION ITEMS ([CLIENT]'S + PROJECT ICON'S), NEXT STEPS — CALL AGENDA. Close with a Project ICON line.
+
+MODULE LIBRARY — include a module ONLY if its deliverable is in scope:
+- BRAND AUTHORITY → ICON's standard Brand & Authority build (the Anze-Mofor shape): a CORE BRAND IDENTITY table (Brand Name / Tagline / Mission / Primary Audience / Flagship or Stage/Talk Direction / Corporate Entity); THE BRAND STORY — Why [Brand] (the name's/brand's meaning tied to the real origin story → the line "This is not background. This is the brand." → a CONDITIONAL values/spiritual note, handled with intentionality, ONLY if the client raised one — embody it, don't market it); BRAND ARCHITECTURE — ONE NAME, EVERY PLATFORM (the cost of fragmentation → a PLATFORM ALIGNMENT PLAN table: Platform / Current State / Target State); BRAND VOICE & MESSAGING GUIDE (an IS / IS-NOT table by dimension + a SHORT bio + a LONG bio). For a premium personal-authority client you may instead/also use the positioning-essay modules: The Authority Asset, Current Positioning Audit, The Market Moment, Tagline Directions, The Authority Pillars, Signature Proof Points & The Named Method™, Comparable Authority Models.
+- BOOK → The Book Strategy (concept, title direction, structure, the goal stated honestly, series horizon).
+- PODCAST → Podcast Strategy at FULL depth: ${PODCAST_STRATEGY_DEPTH}
+- PRESS → Press & Authority — Fixing the Google Story (the current Google/search state as a liability → a numbered PRESS ACTION PLAN → SEO KEYWORD TARGETS; IMDb/repost tagged press where relevant).
+- SPEAKING / STAGE → Speaking & Stage Strategy (which rooms by audience-fit; a signature keynote; speaker reel / one-pager; a year-one stage goal). When TEDx or a flagship stage is the goal, build a TEDX / STAGE APPLICATION STRATEGY: a PROPOSED TALK TITLE + alternative working titles; a TALK STRUCTURE table using the ICON Framework (Hook / The Problem / The Principle / The Proof / The Call, with time ranges); and an APPLICATION REQUIREMENTS checklist (unified searchable presence, proof of speaking experience, a 1–2 min speaker reel, a book, 3+ press placements, a defensible thesis, a one-page committee bio).
+- CONTENT → CONTENT STRATEGY — What They Post & Why: a CONTENT PILLARS table (Pillar / Theme / Example) grounded in what actually performs for this client + a POSTING CADENCE per platform + who does what (ICON scripts/edits, client records). (For a fuller build this becomes THE CONTENT ENGINE with the atomization pipeline and a capped cadence commitment.)
+- COMMUNITY / MONETIZATION → Ideal Client Profile & Revenue Tiers (with real pricing); Referral Partner Targets; Outreach & Post-Show Conversion (CRM/affiliate/automation); The [Brand] Ecosystem — Where Referrals Land (Destination / What It Offers / Status).
+- COURSE / TRAINING → The Course & Training Arm (a tiers table + sequencing).
+
+FLAGSHIP GOAL: if the client has a clear north-star goal (e.g. a TEDx stage), frame the Executive Summary around it ("everything in this document is engineered to make [goal] undeniable") and engineer every other module to build the positioning, platform, and proof that goal requires.
+ASSEMBLY: number sections sequentially (01, 02 …) in a sensible flow — spine-open → brand authority (if in scope) → pillar modules (book, podcast, press, speaking, community, content) → execution spine-close. Group with PART dividers only if the document is large enough to warrant them. Match ICON's altitude and signature devices throughout. Where the deliverables include the podcast, its strategy MUST reach the same depth as the standalone Podcast deck.`;
+
+function scaffoldFor(pkg) {
+  const p = String(pkg || '').toLowerCase();
+  if (p === 'ecosystem') return SCAFFOLD_ECOSYSTEM;
+  if (p === 'podcast')   return SCAFFOLD_PODCAST;
+  if (p === 'custom')    return SCAFFOLD_CUSTOM;
+  return SCAFFOLD_ACCELERATOR;
+}
 
 const AUTHORITY_EXTRACT = `# PART B — EXTRACTION (transcript → facts JSON)
 
-You are the fast FACTS pass. Read the Fathom transcript and pull ONLY the concrete facts and proper nouns needed to build the deck later. Do NOT draft taglines, pillars, funnel stages, bios, or any creative content here — that happens in the document step. Keep values short. Return ONLY the JSON object below — no markdown, no preamble.
+You are the fast FACTS pass. Read the Fathom intake transcript and pull the concrete raw material the Authority Codex is built from. Do NOT draft taglines, positioning statements, pillars, method names, or any finished creative content here — that happens in the document step. Capture the client's real substance: specifics, proof, their own words. Keep values short and factual. Return ONLY the JSON object below — no markdown, no preamble.
 
-For any factual field not stated in the transcript, use "TBD" (or leave arrays empty). NEVER invent names, numbers, orgs, or quotes. Do not write "[NEEDS INPUT]".
+For any factual field not stated in the transcript, use "" or leave arrays empty. NEVER invent names, numbers, orgs, or quotes. Do not write "[NEEDS INPUT]".
 
 Return exactly this JSON structure:
 
 {
-  "client": { "name": "", "origin_story": "", "credentials": [], "values_or_spiritual_dimension": "" },
-  "identity": { "brand_name": "", "podcast_name": "", "book": "", "primary_business": "", "primary_audience": "", "north_star": "", "flagship_goal": "", "location": "", "target_timeline": "" },
-  "proof": { "press": [], "audience_data": [], "footage_testimonials": "" },
-  "current_state_problems": [],
-  "channels": [ { "platform": "", "current_state": "" } ],
+  "client": { "name": "", "nickname": "", "credentials": "", "title_role": "", "company": "", "origin_story": "", "philosophy": "", "values": "" },
+  "identity": { "brand_name": "", "tagline": "", "mission": "", "business_description": "", "flagship": "", "north_star": "", "presented_date": "" },
+  "positioning": { "one_word_territory": "", "core_differentiator": "", "positioning_statement": "", "name_standardization_issue": "", "location": "", "target_timeline": "" },
+  "proof_points": [],
+  "organic_brand_hook": "",
+  "positioning_audit": { "strengths": [], "weaknesses": [], "digital_footprint": [ { "channel": "", "current_state": "", "priority_action": "" } ] },
+  "market_moment": [],
+  "audience": { "primary_profile": "", "segments": [ { "segment": "", "who_they_are": "", "offer_fit": "" } ], "secondary_audiences": [] },
+  "signature_framework": { "name": "", "pillars": [ { "pillar": "", "the_move": "", "what_it_solves": "" } ] },
+  "named_method": { "existing_name": "", "approach_steps": [] },
+  "comparable_figures": [ { "name": "", "what_they_own": "" } ],
+  "book": { "has_ambition": "", "title_ideas": [], "concept": "", "structure_notes": "", "status": "", "primary_use": "" },
+  "podcast": { "name": "", "premise": "", "format": "", "current_state": "", "guest_pipeline_notes": "" },
+  "speaking": { "stage_history": "", "target_rooms": "", "keynote_ideas": "", "tedx_target": "" },
+  "content": { "channels": [ { "platform": "", "current_state": "", "target_state": "" } ], "on_camera_comfort": "", "cadence_capacity": "", "brand_vs_personal_model": "" },
+  "offers_tiers": [ { "offer": "", "format": "", "pricing": "", "status": "" } ],
+  "referral_partners": [ { "category": "", "why_they_refer": "", "opening": "" } ],
+  "course_training": { "has_ambition": "", "tiers_or_vision": "" },
+  "roadmap_constraints": "",
   "named_openings": [ { "contact_or_org": "", "specific_opening": "" } ],
-  "referral_partner_ideas": [],
-  "close_logistics": { "call_day_time_tz": "", "payment_or_financing_status": "", "legal_items": [], "deadlines": [] },
+  "intake_quotes": [ { "quote": "", "attribution": "" } ],
+  "close_logistics": { "call_day_time_tz": "", "next_steps": [] },
   "extracted_names": []
 }
 
+This is a SUPERSET schema serving every package — capture whatever the transcript supports and leave the rest empty. Accelerator clients lean on proof_points / named_method / comparable_figures / book; Ecosystem clients lean on identity / signature_framework / offers_tiers / referral_partners / content.brand_vs_personal_model.
+
 Rules:
-1. named_openings are the crown jewels — every person, company, publication, or institution mentioned plus the specific opening tied to each.
-2. Preserve exact figures and quotes in proof/audience_data. Do not paraphrase stats.
-3. north_star and flagship_goal drive the whole deck — capture them if stated.
-4. "extracted_names": EVERY proper noun you read, verbatim — this list is shown to a human to fix Fathom's garbling before the deck is built.`;
+1. proof_points, named_openings, offers_tiers, referral_partners, and intake_quotes are the crown jewels. proof_points = concrete elevatable specifics (numbers, scale, credentials). named_openings = every real person/company/publication named + the opening tied to each. offers_tiers = every community/mentorship/consulting/DFY tier the client described WITH its exact pricing and format. referral_partners = the partner categories who could refer + why + the opening. intake_quotes = the client's most quotable VERBATIM lines (used as pull-quotes) with a short attribution.
+2. Preserve exact figures, prices, and quotes. Do not paraphrase stats, round numbers, or invent pricing.
+3. These drive the whole document — capture if present: identity.brand_name/tagline/mission/north_star, positioning.one_word_territory + positioning_statement + name_standardization_issue, signature_framework (the named 3-pillar journey), organic_brand_hook (the sentence people already say about them), and content.brand_vs_personal_model (brand-owned vs personal channels).
+4. course_training.has_ambition gates the conditional Course section — capture only if the client actually raised a course/training/certification idea.
+5. "extracted_names": EVERY proper noun you read, verbatim — this list is shown to a human to fix Fathom's garbling before the document is built.`;
 
 const AUTHORITY_DOCUMENT = `# PART C — GENERATE
 
-You are the deck writer. The user message contains the CONFIRMED facts JSON (names corrected). Using ONLY those facts, write the complete ICON Authority Deck as clean markdown, following the House Assets (A0–A8). You draft ALL the creative content here (taglines, pillars, funnel stages, conversion plays, flagship title/structure, bios) from the facts — this is the only creative pass.
+You are the Codex writer. The user message contains the CONFIRMED facts JSON (names corrected), a SELECTED PACKAGE block, and the SECTION SCAFFOLD for that package. Using ONLY those facts, write the complete AUTHORITY CODEX as clean markdown, following the House Assets (A0–A4) and building EXACTLY the cover + sections the provided SCAFFOLD specifies. This is the only creative pass — you draft all strategic/creative content (subtitle, positioning statement, one-word territory, taglines, pillars/framework, named method, book concept/title, roadmap, bios, offer names) from the client's real facts.
 
-- Build the A1 scaffold in order; number sections sequentially across BOTH parts; include the "═══ PART 1 — BRAND AUTHORITY ═══" and "═══ PART 2 — PODCAST FUNNEL & REFERRAL ═══" dividers.
-- HIGH-LEVEL and CONCISE per A0 — a tight paragraph or table per section; do not pad.
-- Cover ← identity + 3 pillars; summary ← the A-ref reframe; identity table ← identity; roadmap ← A4 spanning both parts; action items ← A5 ← close_logistics; agenda ← close_logistics.
-- Fill gaps per A8: CREATIVE drafts labeled "(Working)"/"(Proposed)"; unknown FACTS/dates as a plain "TBD" (NEVER "[NEEDS INPUT]", never red/bold-alarming). Never invent facts. The deck must look finished.
-- Inject A6 proof only on a real match.
-- Match A7 voice. Return ONLY the markdown document — no preamble or commentary.`;
+- Follow the injected SECTION SCAFFOLD precisely: the cover as given, then every listed section in order with the heading style it specifies (including any PART dividers), renumbering only if a CONDITIONAL section is omitted. Do not add or drop sections.
+- Substantive per A0 — each section a real strategic argument (1–3 short paragraphs and/or one tight table) that lands a "so what." Match ICON's reference density and finish. Do not pad and do not thin. Honor the scaffold's roadmap horizon and package-specific devices.
+- Source sections from the matching JSON fields (e.g. identity → Core Identity table; signature_framework → the Framework; offers_tiers → the tiers/pricing tables; referral_partners → Referral Partner Targets; proof_points + named_method → the Accelerator proof/method section; audience → Ideal Audience; book → Book Strategy; content → Content Strategy). Use empty fields as a signal the client didn't cover it — draft the creative or write a clean "TBD", never invent facts.
+- Use the SIGNATURE DEVICES (A2): real pull-quotes from intake_quotes (verbatim, attributed), a Strategic Read on every table/audit, clear recommendation lines, cross-references between sections, and a closing Project ICON quote.
+- Fact vs. creative per A4: present creative work as confident recommendations (no scattered "(Working)/(Proposed)" labels); never invent facts, names, numbers, prices, or quotes; unknowns omitted cleanly or a professional "TBD"; never "[NEEDS INPUT]". The document must read as finished.
+- Inject A3 proof only on a real match.
+- Return ONLY the markdown document — no preamble or commentary.`;
 
 // Call-level model + token defaults (one Claude call per group).
 const CALL_DEFAULTS = {
-  authority_extract:  { model: 'claude-sonnet-4-5', maxTokens: 3000 },
-  authority_document: { model: 'claude-sonnet-4-5', maxTokens: 7000 },
+  authority_extract:  { model: 'claude-sonnet-4-5', maxTokens: 4000 },
+  authority_document: { model: 'claude-sonnet-4-5', maxTokens: 15000 },
   battlecard:         { model: 'claude-sonnet-4-5', maxTokens: 4000 },
   pitch:              { model: 'claude-sonnet-4-5', maxTokens: 4000 },
 };
@@ -390,7 +514,7 @@ const CARDS = {
   'authority.house': {
     call: null, kind: 'prompt', hasSettings: false,
     label: 'House Assets (shared)',
-    note:  'Part A — the constant house format shared by both Authority Deck calls (extraction and document). Never derived from the transcript.',
+    note:  'Part A — the constant house format shared by both Authority Codex calls (extraction and document). Never derived from the transcript.',
     textPath: 'authority.house', textDefault: AUTHORITY_HOUSE,
   },
   'authority.extract': {
@@ -408,7 +532,7 @@ const CARDS = {
   'strategy.base': {
     call: 'battlecard', kind: 'prompt', hasSettings: true,
     label: 'Base Prompt & Output Format',
-    note:  'Shared by all Strategy Guide tabs — persona, pre-processing, and the JSON output contract. The tab rules below are layered onto this.',
+    note:  'Shared by all Podcast Strategy Guide tabs — persona, pre-processing, and the JSON output contract. The tab rules below are layered onto this.',
     textPath: 'strategyBase', textDefault: STRATEGY_BASE,
   },
   'pitch.system': {
@@ -454,13 +578,13 @@ function getAll() {
     groups: [
       {
         call: 'authority',
-        title: 'Authority Deck — Stage 1',
-        description: 'Two AI calls share the House Assets: Extraction (transcript → JSON, reviewed by a human) then Document Assembly (confirmed JSON → deck).',
+        title: 'Authority Codex — Stage 1',
+        description: 'Two AI calls share the House Assets: Extraction (transcript → JSON, reviewed by a human) then Document Assembly (confirmed JSON → codex). The package selected on Stage 1 scopes which sections build (House Assets A9).',
         cards: ['authority.house', 'authority.extract', 'authority.document'].map((id) => buildCard(id, ov)),
       },
       {
         call: 'battlecard',
-        title: 'ICON Strategy Guide — Stage 2',
+        title: 'Podcast Strategy Guide — Stage 2',
         description: 'One AI call produces all five tabs below. Edit the shared base or any tab’s rules independently.',
         cards: ['strategy.base', ...SECTION_ORDER.map((s) => `strategy.section.${s}`)].map((id) => buildCard(id, ov)),
       },
@@ -540,4 +664,4 @@ function reset(cardId) {
   return buildCard(cardId, readOverrides());
 }
 
-module.exports = { getConfig, getAll, save, reset };
+module.exports = { getConfig, getAll, save, reset, scaffoldFor };

@@ -41,7 +41,7 @@ function readFile(key) {
 }
 
 // ── Save (create or update) ────────────────────────────
-function save({ email, name, docType, json, markdown }) {
+function save({ email, name, docType, package: pkg, json, markdown }) {
   const key = keyFor(email, name);
   if (!key) throw new Error('A client email or name is required to save a deck');
 
@@ -54,6 +54,7 @@ function save({ email, name, docType, json, markdown }) {
     email:     (email || '').trim(),
     name:      (name || '').trim(),
     docType:   docType || (json && json.doc_type) || '',
+    package:   pkg || (existing && existing.package) || '',
     json:      json || null,
     markdown:  markdown || '',
     createdAt: existing ? existing.createdAt : now,
@@ -80,6 +81,7 @@ function summarize(r) {
     email:     r.email,
     name:      r.name,
     docType:   r.docType,
+    package:   r.package || '',
     updatedAt: r.updatedAt,
     createdAt: r.createdAt,
     versionCount: (r.versions || []).length,

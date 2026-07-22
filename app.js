@@ -82,11 +82,11 @@ app.post('/api/export-pdf', async (req, res) => {
     if (!battlecard) return res.status(400).json({ ok: false, error: 'battlecard required' });
 
     const pdfBytes  = await generatePDF(battlecard, {}, pitch || null);
-    const clientSlug = (battlecard.meta?.clientName || 'battlecard')
+    const clientSlug = (battlecard.meta?.clientName || 'podcast-strategy-guide')
       .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${clientSlug}-battlecard.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${clientSlug}-podcast-strategy-guide.pdf"`);
     res.send(Buffer.from(pdfBytes)); // pdfBytes is Uint8Array — Buffer.from is zero-copy
   } catch (err) {
     console.error('[/api/export-pdf]', err.message);
@@ -94,7 +94,7 @@ app.post('/api/export-pdf', async (req, res) => {
   }
 });
 
-// ── Authority Deck (Stage 1) ───────────────────────────
+// ── Authority Codex (Stage 1) ──────────────────────────
 // POST /api/authority/extract  → transcript → review-ready JSON (SSE)
 app.post('/api/authority/extract', async (req, res) => {
   startSSE(res);
@@ -113,13 +113,14 @@ app.post('/api/authority/extract', async (req, res) => {
 app.post('/api/authority/generate', async (req, res) => {
   startSSE(res);
   try {
-    const { extraction, client } = req.body || {};
+    const { extraction, client, package: pkg, customDeliverables } = req.body || {};
     if (!extraction) throw new Error('extraction JSON is required');
-    const markdown = await assembleDeck(extraction, (t) => sseEvent(res, 'progress', { tokens: t }));
+    const markdown = await assembleDeck(extraction, pkg, customDeliverables, (t) => sseEvent(res, 'progress', { tokens: t }));
     const saved = memory.save({
       email:    (client && client.email) || '',
       name:     (client && client.name)  || (extraction.client && extraction.client.name) || '',
       docType:  'authority_deck',
+      package:  pkg || '',
       json:     extraction,
       markdown,
     });
