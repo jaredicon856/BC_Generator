@@ -2604,7 +2604,9 @@ async function loadMemory() {
       const card = document.createElement('div');
       card.className = 'memory-card';
       const when = new Date(d.updatedAt).toLocaleString();
-      const dt = (d.docType || '').replace(/_/g, ' ');
+      // Display name: the deliverable is branded "Authority Codex" (stored
+      // docType stays 'authority_deck' for backward compatibility).
+      const dt = d.docType === 'authority_deck' ? 'authority codex' : (d.docType || '').replace(/_/g, ' ');
       card.innerHTML = `
         <div class="mc-main">
           <div class="mc-name">${(d.name || d.email || d.key).replace(/</g,'&lt;')}</div>

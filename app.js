@@ -228,8 +228,8 @@ async function processFathomCall({ phase, clientName, clientKey, storeKey, trans
         await slack.uploadFile(
           authorityChannel,
           Buffer.from(pdfBytes),
-          `${clientName} - Authority Deck.pdf`,
-          `<!channel> :page_facing_up: *Phase 1 complete* -- Authority Deck ready for *${clientName}* (key: ${storeKey})`
+          `${clientName} - Authority Codex.pdf`,
+          `<!channel> :page_facing_up: *Phase 1 complete* -- Authority Codex ready for *${clientName}* (key: ${storeKey})`
         );
       } catch (slackErr) {
         console.error('[webhook/fathom] Slack Authority Deck upload failed:', slackErr.message);
@@ -262,7 +262,7 @@ async function processFathomCall({ phase, clientName, clientKey, storeKey, trans
       try {
         await slack.postMessage(
           battlecardChannel,
-          `<!channel> :warning: *Phase 2* -- Generating the Battlecard for *${clientName}* with no stored Authority Deck found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
+          `<!channel> :warning: *Phase 2* -- Generating the Battlecard for *${clientName}* with no stored Authority Codex found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
         );
       } catch (slackErr) {
         console.error('[webhook/fathom] Slack alert (missing Authority Deck) failed:', slackErr.message);
