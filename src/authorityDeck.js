@@ -99,17 +99,90 @@ Pull the facts JSON now. Put Location into positioning.location, the launch/time
 }
 
 // ── PART C — write the deck (confirmed facts → markdown) ─
+// The codex is a 15k+-token document; one sequential Claude call takes 6-7
+// minutes and can hit the output ceiling mid-document. Fixed-scaffold packages
+// are therefore written as THREE CONCURRENT SLICE CALLS — each gets the full
+// house prompt + scaffold + facts (so voice and strategy stay coherent) but
+// writes only its slice — then the slices are stitched in order and section
+// numbering is normalized. Wall-clock drops to roughly the longest slice
+// (~2 min) and each slice has the full token budget, so truncation is gone.
+// The CUSTOM package composes its section list dynamically, so it can't be
+// pre-sliced — it keeps the original single-call path.
+const SLICE_PLANS = {
+  accelerator: [
+    'the COVER and sections 01 through 06',
+    'sections 07 through 12',
+    'sections 13 through 17',
+  ],
+  ecosystem: [
+    'the COVER and sections 01 through 05 (including the PART 1 divider where the scaffold places it)',
+    'sections 06 through 10 (including the PART 2 divider where the scaffold places it)',
+    'sections 11 through 16 (including the PART 3 divider where the scaffold places it)',
+  ],
+  podcast: [
+    'the COVER and sections 01 through 04',
+    'sections 05 through 08',
+    'sections 09 through 11',
+  ],
+};
+
+function slicePrompt(baseContext, sliceRange, sliceIndex, sliceCount) {
+  return `${baseContext}
+
+PARALLEL ASSEMBLY — WRITE YOUR SLICE ONLY:
+This codex is being written in ${sliceCount} slices simultaneously and stitched together in scaffold order afterwards. Your job is ONLY ${sliceRange}.
+- ${sliceIndex === 0 ? 'Begin with the COVER exactly as the scaffold specifies, then your sections.' : 'Do NOT write the cover or any section outside your slice.'}
+- Write your sections exactly as they will appear inside the finished document — same altitude, same voice, fully built out.
+- Use the scaffold's section numbers exactly as given. If a CONDITIONAL section in your slice does not apply, omit it entirely WITHOUT renumbering — numbering is normalized after assembly.
+- Do not reference other sections by number, and do not summarize or preview content that belongs to another slice.
+- No preamble, no commentary, no closing note: your output starts at your first heading and ends at the end of your last section.`;
+}
+
+// After stitching, rewrite two-digit section numbers into one clean sequence
+// (fixes gaps left by omitted CONDITIONAL sections) and normalize every
+// section heading to the same "## " level (slices sometimes disagree on # vs
+// ##). Only touches heading lines like "## SECTION 12   |   TITLE" or
+// "## 04   TITLE"; PART dividers, pillar subheads ("### 1. ..."), and body
+// text are left alone.
+function renumberSections(markdown) {
+  let n = 0;
+  return markdown.replace(
+    /^#{1,4}(\s*)((?:SECTION\s+)?)(\d{2})(\b.*)$/gm,
+    (_, sp, secWord, _num, rest) => `##${sp || ' '}${secWord}${String(++n).padStart(2, '0')}${rest}`
+  );
+}
+
 async function assembleDeck(confirmedJson, pkg, deliverables, onProgress) {
-  const userContent = `${packageNote(pkg, deliverables)}
+  const cfg = getConfig('authority_document');
+  const key = String(pkg || '').toLowerCase();
+  const plan = SLICE_PLANS[key] || (key === 'custom' ? null : SLICE_PLANS.accelerator);
+
+  const baseContext = `${packageNote(pkg, deliverables)}
 
 ${scaffoldFor(pkg)}
 
-Here are the CONFIRMED facts. Write the full AUTHORITY CODEX as clean markdown, building EXACTLY the cover + sections the SECTION SCAFFOLD above specifies for this package, in order.
+Here are the CONFIRMED facts. Write the AUTHORITY CODEX as clean markdown, building EXACTLY the cover + sections the SECTION SCAFFOLD above specifies for this package, in order.
 
 ${JSON.stringify(confirmedJson, null, 2)}`;
 
-  const cfg = getConfig('authority_document');
-  return stream(cfg, userContent, onProgress);
+  // Custom package: dynamic section list — single call, as before.
+  if (!plan) return stream(cfg, baseContext, onProgress);
+
+  // Aggregate per-slice token counts into one monotonic progress number.
+  const counts = plan.map(() => 0);
+  const emit = () => onProgress && onProgress(counts.reduce((a, b) => a + b, 0));
+
+  const slices = await Promise.all(
+    plan.map((range, i) =>
+      stream(cfg, slicePrompt(baseContext, range, i, plan.length), (n) => { counts[i] = n; emit(); })
+    )
+  );
+
+  slices.forEach((text, i) => {
+    if (!text || !text.trim()) throw new Error(`Deck slice ${i + 1}/${plan.length} came back empty — please retry`);
+  });
+
+  return renumberSections(slices.map((s) => s.trim()).join('\n\n---\n\n'));
 }
 
 module.exports = { extractDeck, assembleDeck };
