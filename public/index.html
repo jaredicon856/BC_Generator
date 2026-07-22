@@ -2416,6 +2416,9 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
   const btn = document.getElementById('btn-generate-deck');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Generating…';
   status.textContent = '';
+  const clientNameVal  = document.getElementById('authority-client-name').value.trim();
+  const clientEmailVal = document.getElementById('authority-client-email').value.trim();
+  const genStartedAt   = Date.now();
   try {
     const res = await fetch('/api/authority/generate', {
       method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -2423,21 +2426,35 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
         extraction: json,
         package: selectedPackage(),
         customDeliverables: customDeliverables(),
-        client: {
-          name: document.getElementById('authority-client-name').value.trim(),
-          email: document.getElementById('authority-client-email').value.trim(),
-        },
+        client: { name: clientNameVal, email: clientEmailVal },
       }),
     });
     checkAuth(res);
-    let md = '', saved = null;
-    await readSSEStream(res, (event, payload) => {
-      if (event === 'done') { md = payload.markdown; saved = payload.saved; }
-      else if (event === 'error') throw new Error(payload.error);
-    });
-    // A stream cut off mid-generation (e.g. function timeout) ends with no
-    // done event — surface that instead of rendering an empty deck.
-    if (!md) throw new Error('No deck returned — the generation may have timed out. Please try again.');
+    let md = '', saved = null, streamErr = null;
+    try {
+      await readSSEStream(res, (event, payload) => {
+        if (event === 'done') { md = payload.markdown; saved = payload.saved; }
+        else if (event === 'error') throw new Error(payload.error);
+      });
+    } catch (e) { streamErr = e; } // network drop mid-stream — recovery below
+    // Multi-minute generations often outlive the browser's streaming
+    // connection: the server finishes and saves to the Memory Bank, but the
+    // done event dies with the connection. Before declaring failure, watch
+    // the Memory Bank for a deck saved after we started.
+    if (!md) {
+      status.classList.remove('error');
+      status.textContent = 'Connection dropped — the server is still generating. Watching the Memory Bank…';
+      const rec = await recoverDeckFromMemory(clientEmailVal, clientNameVal, genStartedAt, (msg) => { status.textContent = msg; });
+      if (rec) {
+        md = rec.markdown;
+        saved = { key: rec.key, name: rec.name, email: rec.email, updatedAt: rec.updatedAt };
+      }
+    }
+    if (!md) {
+      if (streamErr) throw streamErr;
+      throw new Error('No deck returned — the generation may have timed out. Please try again.');
+    }
+    status.textContent = '';
     authorityMarkdown = md; authoritySaved = saved;
     renderDeckStep(md, saved);
     gotoStep(3);
@@ -2447,6 +2464,28 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
     btn.disabled = false; btn.textContent = 'Generate Deck →';
   }
 });
+
+// Watch the Memory Bank for a deck for this client saved after `sinceMs`
+// (2-minute clock-skew grace). Polls every 10s for up to 8 minutes — decks
+// generate in ~4, so this covers a drop early in the stream.
+async function recoverDeckFromMemory(email, name, sinceMs, onTick) {
+  const q = new URLSearchParams({ email: email || '', name: name || '' }).toString();
+  const deadline = Date.now() + 8 * 60 * 1000;
+  while (Date.now() < deadline) {
+    try {
+      const res  = await fetch('/api/memory/find?' + q, { headers: authHeaders() });
+      const data = await res.json();
+      const d = data && data.deck;
+      if (d && d.markdown && new Date(d.updatedAt).getTime() >= sinceMs - 120000) return d;
+    } catch (_) { /* transient — keep watching */ }
+    if (onTick) {
+      const left = Math.max(0, Math.round((deadline - Date.now()) / 60000));
+      onTick(`Connection dropped — the server is still generating. Watching the Memory Bank (~${left} min window left)…`);
+    }
+    await new Promise((r) => setTimeout(r, 10000));
+  }
+  return null;
+}
 
 function renderDeckStep(md, saved) {
   document.getElementById('authority-deck-doc').innerHTML = mdToHtml(md);
