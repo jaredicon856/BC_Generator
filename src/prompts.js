@@ -440,15 +440,50 @@ const CALL_DEFAULTS = {
 };
 
 // ── Persistence ────────────────────────────────────────
-function readOverrides() {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-  } catch (_) {
-    return {};
+// Overrides live in Upstash Redis when configured (Vercel's serverless
+// filesystem is read-only, so data/prompts.json can't persist there), else in
+// data/prompts.json for local dev. An in-memory cache keeps getConfig() and
+// getAll() synchronous — generators need no changes. ready() resolves once
+// the cache is loaded; the /api middleware awaits it so a cold start never
+// serves defaults when overrides exist.
+const HAS_REDIS = !!(
+  (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
+  (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+);
+const OVERRIDES_KEY = 'prompts:overrides';
+
+let redis = null;
+function getRedis() {
+  if (!redis) {
+    const { Redis } = require('@upstash/redis');
+    redis = Redis.fromEnv();
   }
+  return redis;
 }
 
-function writeOverrides(overrides) {
+let cachedOverrides = {};
+let readyPromise;
+if (HAS_REDIS) {
+  readyPromise = getRedis().get(OVERRIDES_KEY)
+    .then((v) => { cachedOverrides = (v && typeof v === 'object') ? v : {}; })
+    .catch((err) => { console.warn('[prompts] Could not load overrides from Redis:', err.message); });
+} else {
+  try { cachedOverrides = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (_) { cachedOverrides = {}; }
+  readyPromise = Promise.resolve();
+}
+
+function ready() { return readyPromise; }
+
+function readOverrides() {
+  return cachedOverrides;
+}
+
+async function writeOverrides(overrides) {
+  cachedOverrides = overrides;
+  if (HAS_REDIS) {
+    await getRedis().set(OVERRIDES_KEY, overrides);
+    return;
+  }
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(DATA_FILE, JSON.stringify(overrides, null, 2));
 }
@@ -627,7 +662,7 @@ function prune(overrides) {
   }
 }
 
-function save(cardId, patch) {
+async function save(cardId, patch) {
   const def = CARDS[cardId];
   if (!def) throw new Error(`Unknown card: ${cardId}`);
   const ov = readOverrides();
@@ -652,11 +687,11 @@ function save(cardId, patch) {
   }
 
   prune(ov);
-  writeOverrides(ov);
+  await writeOverrides(ov);
   return buildCard(cardId, readOverrides());
 }
 
-function reset(cardId) {
+async function reset(cardId) {
   const def = CARDS[cardId];
   if (!def) throw new Error(`Unknown card: ${cardId}`);
   const ov = readOverrides();
@@ -669,8 +704,8 @@ function reset(cardId) {
   }
 
   prune(ov);
-  writeOverrides(ov);
+  await writeOverrides(ov);
   return buildCard(cardId, readOverrides());
 }
 
-module.exports = { getConfig, getAll, save, reset, scaffoldFor };
+module.exports = { getConfig, getAll, save, reset, ready, scaffoldFor };

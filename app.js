@@ -41,6 +41,14 @@ app.use('/api', (req, res, next) => {
   return res.status(401).json({ ok: false, error: 'Invalid or missing access code' });
 });
 
+// Prompt overrides load asynchronously from Redis on cold start; make sure
+// they're in the cache before any handler builds a system prompt. Resolved
+// promise after first load, so this is effectively free per-request.
+app.use('/api', async (req, res, next) => {
+  try { await prompts.ready(); } catch (_) {}
+  next();
+});
+
 // ── SSE helpers ────────────────────────────────────────
 function startSSE(res) {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -387,12 +395,12 @@ app.post('/api/authority/generate', async (req, res) => {
     const { extraction, client, package: pkg, customDeliverables } = req.body || {};
     if (!extraction) throw new Error('extraction JSON is required');
     const markdown = await assembleDeck(extraction, pkg, customDeliverables, (t) => sseEvent(res, 'progress', { tokens: t }));
-    // memory.save writes to local disk (data/decks) — on Vercel's read-only
-    // serverless filesystem this throws. A failed save must not kill an
-    // otherwise-successful generation: return the deck, flag saved as null.
+    // memory.save persists to Upstash Redis on Vercel (local files in dev).
+    // Defense-in-depth: a failed save must not kill an otherwise-successful
+    // generation — return the deck anyway, flag saved as null.
     let saved = null;
     try {
-      saved = memory.save({
+      saved = await memory.save({
         email:    (client && client.email) || '',
         name:     (client && client.name)  || (extraction.client && extraction.client.name) || '',
         docType:  'authority_deck',
@@ -416,27 +424,49 @@ app.post('/api/authority/generate', async (req, res) => {
 });
 
 // ── Memory bank ────────────────────────────────────────
-app.get('/api/memory', (req, res) => {
-  res.json({ ok: true, decks: memory.list() });
+// memory.* is async (Upstash Redis on Vercel, local files in dev). Express 4
+// doesn't catch rejected promises in async handlers, so each one try/catches.
+app.get('/api/memory', async (req, res) => {
+  try {
+    res.json({ ok: true, decks: await memory.list() });
+  } catch (err) {
+    console.error('[/api/memory]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // Lookup for Stage 2 (define BEFORE /:key so "find" isn't captured as a key).
-app.get('/api/memory/find', (req, res) => {
-  const r = memory.findByClient(req.query.email || '', req.query.name || '');
-  res.json({
-    ok: true,
-    deck: r ? { key: r.key, name: r.name, email: r.email, docType: r.docType, updatedAt: r.updatedAt, json: r.json, markdown: r.markdown } : null,
-  });
+app.get('/api/memory/find', async (req, res) => {
+  try {
+    const r = await memory.findByClient(req.query.email || '', req.query.name || '');
+    res.json({
+      ok: true,
+      deck: r ? { key: r.key, name: r.name, email: r.email, docType: r.docType, updatedAt: r.updatedAt, json: r.json, markdown: r.markdown } : null,
+    });
+  } catch (err) {
+    console.error('[/api/memory/find]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
-app.get('/api/memory/:key', (req, res) => {
-  const r = memory.get(req.params.key);
-  if (!r) return res.status(404).json({ ok: false, error: 'Deck not found' });
-  res.json({ ok: true, deck: r });
+app.get('/api/memory/:key', async (req, res) => {
+  try {
+    const r = await memory.get(req.params.key);
+    if (!r) return res.status(404).json({ ok: false, error: 'Deck not found' });
+    res.json({ ok: true, deck: r });
+  } catch (err) {
+    console.error('[/api/memory/:key]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
-app.delete('/api/memory/:key', (req, res) => {
-  res.json({ ok: memory.remove(req.params.key) });
+app.delete('/api/memory/:key', async (req, res) => {
+  try {
+    res.json({ ok: await memory.remove(req.params.key) });
+  } catch (err) {
+    console.error('[DELETE /api/memory/:key]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ── Prompt settings (the AI logic behind each tab) ─────
@@ -447,18 +477,18 @@ app.get('/api/prompts', (req, res) => {
   res.json({ ok: true, ...prompts.getAll() });
 });
 
-app.put('/api/prompts/card/:id', (req, res) => {
+app.put('/api/prompts/card/:id', async (req, res) => {
   try {
-    const card = prompts.save(req.params.id, req.body || {});
+    const card = await prompts.save(req.params.id, req.body || {});
     res.json({ ok: true, card });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
 });
 
-app.post('/api/prompts/card/:id/reset', (req, res) => {
+app.post('/api/prompts/card/:id/reset', async (req, res) => {
   try {
-    const card = prompts.reset(req.params.id);
+    const card = await prompts.reset(req.params.id);
     res.json({ ok: true, card });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });

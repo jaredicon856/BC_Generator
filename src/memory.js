@@ -3,14 +3,36 @@
 // Stage 1 saves a deck here; days later Stage 2 pulls it by client to build
 // the Strategy Guide. A client is identified by email (primary) + name.
 //
-// One JSON file per client under data/decks/. Each file holds the latest
-// deck plus an archive of prior versions (regenerating a client's deck keeps
-// the newest active and pushes the old one into `versions`).
+// Storage backend:
+//   - Upstash Redis when KV_REST_API_URL / KV_REST_API_TOKEN are set (Vercel —
+//     the serverless filesystem is read-only, so disk persistence is not an
+//     option there). One record per client at deckmem:<key>, plus a
+//     deckmem:index set for listing.
+//   - Local JSON files under data/decks/ otherwise (dev without Redis creds).
+// All read/write functions are async so both backends share one interface.
 
 const fs   = require('fs');
 const path = require('path');
 
 const DECKS_DIR = path.join(__dirname, '..', 'data', 'decks');
+
+const HAS_REDIS = !!(
+  (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
+  (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+);
+
+// Lazily constructed so local dev without creds never touches the client.
+let redis = null;
+function getRedis() {
+  if (!redis) {
+    const { Redis } = require('@upstash/redis');
+    redis = Redis.fromEnv();
+  }
+  return redis;
+}
+
+const REC_PREFIX = 'deckmem:';
+const INDEX_KEY  = 'deckmem:index';
 
 function slug(str) {
   return String(str || '')
@@ -28,11 +50,12 @@ function keyFor(email, name) {
   return n ? `name-${n}` : '';
 }
 
+// ── File backend helpers (local dev) ───────────────────
 function fileFor(key) {
   return path.join(DECKS_DIR, `${key}.json`);
 }
 
-function readFile(key) {
+function readFileRecord(key) {
   try {
     return JSON.parse(fs.readFileSync(fileFor(key), 'utf8'));
   } catch (_) {
@@ -40,14 +63,49 @@ function readFile(key) {
   }
 }
 
+// ── Backend-agnostic record access ─────────────────────
+async function readRecord(key) {
+  if (!key) return null;
+  if (HAS_REDIS) {
+    const rec = await getRedis().get(REC_PREFIX + key);
+    return rec || null;
+  }
+  return readFileRecord(key);
+}
+
+async function writeRecord(key, record) {
+  if (HAS_REDIS) {
+    // No TTL: the memory bank is a client library, not transient call state.
+    const r = getRedis();
+    await r.set(REC_PREFIX + key, record);
+    await r.sadd(INDEX_KEY, key);
+    return;
+  }
+  fs.mkdirSync(DECKS_DIR, { recursive: true });
+  fs.writeFileSync(fileFor(key), JSON.stringify(record, null, 2));
+}
+
+async function allKeys() {
+  if (HAS_REDIS) {
+    const keys = await getRedis().smembers(INDEX_KEY);
+    return keys || [];
+  }
+  try {
+    return fs.readdirSync(DECKS_DIR)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => f.replace(/\.json$/, ''));
+  } catch (_) {
+    return [];
+  }
+}
+
 // ── Save (create or update) ────────────────────────────
-function save({ email, name, docType, package: pkg, json, markdown }) {
+async function save({ email, name, docType, package: pkg, json, markdown }) {
   const key = keyFor(email, name);
   if (!key) throw new Error('A client email or name is required to save a deck');
 
-  fs.mkdirSync(DECKS_DIR, { recursive: true });
   const now      = new Date().toISOString();
-  const existing = readFile(key);
+  const existing = await readRecord(key);
 
   const record = {
     key,
@@ -70,7 +128,7 @@ function save({ email, name, docType, package: pkg, json, markdown }) {
     ].slice(0, 10);
   }
 
-  fs.writeFileSync(fileFor(key), JSON.stringify(record, null, 2));
+  await writeRecord(key, record);
   return record;
 }
 
@@ -88,38 +146,49 @@ function summarize(r) {
   };
 }
 
-function list() {
-  let files = [];
-  try { files = fs.readdirSync(DECKS_DIR).filter((f) => f.endsWith('.json')); } catch (_) { return []; }
-  return files
-    .map((f) => readFile(f.replace(/\.json$/, '')))
+async function list() {
+  const keys = await allKeys();
+  if (!keys.length) return [];
+  let records;
+  if (HAS_REDIS) {
+    records = await getRedis().mget(...keys.map((k) => REC_PREFIX + k));
+  } else {
+    records = keys.map(readFileRecord);
+  }
+  return records
     .filter(Boolean)
     .map(summarize)
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
-function get(key) {
-  return readFile(key);
+async function get(key) {
+  return readRecord(key);
 }
 
 // Look a client up for Stage 2. Match on email first (exact, normalized),
 // then fall back to name.
-function findByClient(email, name) {
-  const byEmail = slug(email) ? readFile(slug(email)) : null;
+async function findByClient(email, name) {
+  const byEmail = slug(email) ? await readRecord(slug(email)) : null;
   if (byEmail) return byEmail;
 
   const nk = slug(name);
   if (nk) {
-    const byNameKey = readFile(`name-${nk}`);
+    const byNameKey = await readRecord(`name-${nk}`);
     if (byNameKey) return byNameKey;
     // Last resort: a deck saved under an email key whose stored name matches.
-    const match = list().find((r) => slug(r.name) === nk);
-    if (match) return readFile(match.key);
+    const match = (await list()).find((r) => slug(r.name) === nk);
+    if (match) return readRecord(match.key);
   }
   return null;
 }
 
-function remove(key) {
+async function remove(key) {
+  if (HAS_REDIS) {
+    const r = getRedis();
+    const deleted = await r.del(REC_PREFIX + key);
+    await r.srem(INDEX_KEY, key);
+    return deleted > 0;
+  }
   try { fs.unlinkSync(fileFor(key)); return true; } catch (_) { return false; }
 }
 
