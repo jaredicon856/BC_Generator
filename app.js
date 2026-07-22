@@ -16,6 +16,7 @@ const slack                         = require('./src/slack');
 const { waitUntil }                 = require('@vercel/functions');
 // Client Strategy Studio (Authority Codex extract/assemble + memory + prompts)
 const { extractDeck, assembleDeck } = require('./src/authorityDeck');
+const { markdownToPdf }             = require('./src/mdPdf');
 const prompts                       = require('./src/prompts');
 const memory                        = require('./src/memory');
 
@@ -443,16 +444,23 @@ app.post('/api/authority/generate', async (req, res) => {
     }
 
     // Bridge: announce Studio-generated codexes in Slack, same channel and
-    // style as the webhook pipeline. Non-fatal.
+    // style as the webhook pipeline. Attach a rendered PDF; fall back to the
+    // raw markdown if PDF rendering fails. Non-fatal either way.
     const studioDeckChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
     if (studioDeckChannel) {
+      const comment = `<!channel> :page_facing_up: *Authority Codex generated in the Studio* for *${bridgeName || bridgeKey}*${saved ? ` (Memory Bank: ${saved.key})` : ''}`;
       try {
-        await slack.uploadFile(
-          studioDeckChannel,
-          Buffer.from(markdown, 'utf8'),
-          `${bridgeName || 'Client'} - Authority Codex.md`,
-          `<!channel> :page_facing_up: *Authority Codex generated in the Studio* for *${bridgeName || bridgeKey}*${saved ? ` (Memory Bank: ${saved.key})` : ''}`
-        );
+        let fileBuffer, fileName;
+        try {
+          const pdfBytes = await markdownToPdf(markdown);
+          fileBuffer = Buffer.from(pdfBytes);
+          fileName   = `${bridgeName || 'Client'} - Authority Codex.pdf`;
+        } catch (pdfErr) {
+          console.warn('[/api/authority/generate] PDF render failed, sending markdown instead:', pdfErr.message);
+          fileBuffer = Buffer.from(markdown, 'utf8');
+          fileName   = `${bridgeName || 'Client'} - Authority Codex.md`;
+        }
+        await slack.uploadFile(studioDeckChannel, fileBuffer, fileName, comment);
       } catch (slackErr) {
         console.warn('[/api/authority/generate] Slack delivery failed:', slackErr.message);
       }

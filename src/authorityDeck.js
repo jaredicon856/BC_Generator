@@ -135,7 +135,21 @@ This codex is being written in ${sliceCount} slices simultaneously and stitched 
 - Write your sections exactly as they will appear inside the finished document — same altitude, same voice, fully built out.
 - Use the scaffold's section numbers exactly as given. If a CONDITIONAL section in your slice does not apply, omit it entirely WITHOUT renumbering — numbering is normalized after assembly.
 - Do not reference other sections by number, and do not summarize or preview content that belongs to another slice.
+- PLAIN MARKDOWN ONLY: never wrap your output in code fences (\`\`\`) and never use raw HTML tags like <div> — center the cover with plain markdown lines.
 - No preamble, no commentary, no closing note: your output starts at your first heading and ends at the end of your last section.`;
+}
+
+// Models occasionally wrap a slice in a ```markdown fence or reach for raw
+// HTML (<div align="center">) for the cover — both render as literal junk.
+// Strip them defensively.
+function cleanSlice(text) {
+  return String(text || '')
+    .split('\n')
+    // fence lines (``` / ```markdown) and bare <div>/</div> wrappers — the
+    // codex never legitimately contains either
+    .filter((line) => !/^\s*```[a-z]*\s*$/i.test(line) && !/^\s*<\/?div[^>]*>\s*$/i.test(line))
+    .join('\n')
+    .trim();
 }
 
 // After stitching, rewrite two-digit section numbers into one clean sequence
@@ -166,7 +180,7 @@ Here are the CONFIRMED facts. Write the AUTHORITY CODEX as clean markdown, build
 ${JSON.stringify(confirmedJson, null, 2)}`;
 
   // Custom package: dynamic section list — single call, as before.
-  if (!plan) return stream(cfg, baseContext, onProgress);
+  if (!plan) return cleanSlice(await stream(cfg, baseContext, onProgress));
 
   // Aggregate per-slice token counts into one monotonic progress number.
   const counts = plan.map(() => 0);
@@ -178,11 +192,12 @@ ${JSON.stringify(confirmedJson, null, 2)}`;
     )
   );
 
-  slices.forEach((text, i) => {
-    if (!text || !text.trim()) throw new Error(`Deck slice ${i + 1}/${plan.length} came back empty — please retry`);
+  const cleaned = slices.map(cleanSlice);
+  cleaned.forEach((text, i) => {
+    if (!text) throw new Error(`Deck slice ${i + 1}/${plan.length} came back empty — please retry`);
   });
 
-  return renumberSections(slices.map((s) => s.trim()).join('\n\n---\n\n'));
+  return renumberSections(cleaned.join('\n\n---\n\n'));
 }
 
 module.exports = { extractDeck, assembleDeck };
