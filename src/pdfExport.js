@@ -313,41 +313,59 @@ async function generatePDF(battlecard, _colors = {}, pitch = null) {
     renderList(battlecard.icpList, 'ICP');
   }
 
-  // ── BOOKING FORM ─────────────────────────────────────────
-  addPage('Booking Form');
+  // ── Q/DQ FORM ────────────────────────────────────────────
+  addPage('Q/DQ Form');
+  const bf = battlecard?.bookingForm || {};
+  const roleLabel = { fit: 'Fit', credibility: 'Credibility', network: 'Network' };
 
-  sectionTitle('Qualifying Questions');
-  for (const q of (battlecard?.bookingForm?.qualifyingQuestions || [])) {
-    card([
-      { text: q.question || '', bold: true, size: 11 },
-      { text: 'Disqualify if selected:', size: 8.5, color: C.goldMid },
-      ...(q.disqualifyingAnswers || []).flatMap(a =>
-        wrapText(`· ${a}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5, color: C.goldDeep }))
-      ),
-    ], { bar: C.goldMid });
-    gap(2);
-  }
+  sectionTitle('Section 1 · Personal Details');
+  const pdFields = (bf.personalDetails || []).length ? bf.personalDetails : ['Full name', 'Email', 'Phone', 'LinkedIn profile URL'];
+  card(pdFields.map(f => ({ text: `· ${f}`, size: 10 })), {});
   gap(8);
 
-  sectionTitle('Strong Fit Signals');
-  for (const s of (battlecard?.bookingForm?.strongFitSignals || [])) {
-    card(wrapText(`- ${s}`, regular, 10, CW - 24).map(l => ({ text: l, size: 10 })), {});
+  sectionTitle('Section 2 · About You & Your Work');
+  (bf.coreQuestions || []).forEach((q, i) => {
+    const lines = [
+      { text: `Q${i + 1} · ${roleLabel[q.role] || q.role || ''}`, size: 8, color: C.goldMid },
+      ...wrapText(q.question || '', bold, 11, CW - 24).map(l => ({ text: l, bold: true, size: 11 })),
+      ...(q.options || []).flatMap(o => wrapText(`○ ${o}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5 }))),
+    ];
+    if ((q.dqAnswers || []).length) {
+      lines.push({ text: 'DQ if selected:', size: 8.5, color: C.signal });
+      for (const a of q.dqAnswers) lines.push(...wrapText(`· ${a}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5, color: C.signal })));
+    }
+    if ((q.strongFitAnswers || []).length) {
+      lines.push({ text: 'Strong fit:', size: 8.5, color: C.goldMid });
+      for (const a of q.strongFitAnswers) lines.push(...wrapText(`· ${a}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5, color: C.goldDeep })));
+    }
+    if (q.referralSignal) lines.push(...wrapText(`Internal signal: ${q.referralSignal}`, regular, 9, CW - 24).map(l => ({ text: l, size: 9, color: C.goldMid })));
+    card(lines, { bar: C.goldMid });
+    gap(3);
+  });
+  gap(6);
+
+  sectionTitle('Section 3 · Interview Fit');
+  for (const q of (bf.interviewFit || [])) {
+    card(wrapText(q.question || '', bold, 10.5, CW - 24).map(l => ({ text: l, bold: true, size: 10.5 })), {});
     gap(2);
   }
+  gap(6);
 
-  // ── REFERRAL DETECTION ───────────────────────────────────
-  addPage('Referral Detection');
-
-  sectionTitle('Referral Detection Questions');
-  for (const q of (battlecard?.bookingForm?.referralDetectionQuestions || [])) {
-    card([
-      { text: q.question || '', bold: true, size: 11 },
-      ...(q.options || []).flatMap(o =>
-        wrapText(`· ${o}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5, color: C.goldDeep }))
-      ),
-      { text: `Signal: ${q.signalNote || ''}`, size: 9.5, color: C.signal },
-    ], {});
-    gap(2);
+  if ((bf.alternates || []).length) {
+    sectionTitle('Alternate Questions');
+    for (const q of bf.alternates) {
+      const lines = [
+        { text: roleLabel[q.role] || q.role || '', size: 8, color: C.goldMid },
+        ...wrapText(q.question || '', bold, 10.5, CW - 24).map(l => ({ text: l, bold: true, size: 10.5 })),
+        ...(q.options || []).flatMap(o => wrapText(`○ ${o}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5 }))),
+      ];
+      if ((q.dqAnswers || []).length) {
+        lines.push({ text: 'DQ if selected:', size: 8.5, color: C.signal });
+        for (const a of q.dqAnswers) lines.push(...wrapText(`· ${a}`, regular, 9.5, CW - 36).map(l => ({ text: l, size: 9.5, color: C.signal })));
+      }
+      card(lines, {});
+      gap(2);
+    }
   }
 
   // ── OFFER MATCHING ───────────────────────────────────────

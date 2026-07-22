@@ -4,15 +4,20 @@ const express = require('express');
 const multer  = require('multer');
 const path    = require('path');
 
-const { generateBattlecard }     = require('./src/generator');
-const { generatePitch }          = require('./src/pitchGenerator');
-const { generateAuthorityDeck }  = require('./src/authorityDeckGenerator');
-const { generatePDF }            = require('./src/pdfExport');
-const { generateAuthorityDeckPDF } = require('./src/authorityDeckPdf');
-const { generateVoiceSummary }   = require('./src/voiceSummary');
-const store                      = require('./src/store');
-const slack                      = require('./src/slack');
-const { waitUntil }              = require('@vercel/functions');
+const { generateBattlecard }        = require('./src/generator');
+const { generatePitch }             = require('./src/pitchGenerator');
+const { generatePDF }               = require('./src/pdfExport');
+// Fathom webhook pipeline (Authority Deck → Battlecard → Slack + voice)
+const { generateAuthorityDeck }     = require('./src/authorityDeckGenerator');
+const { generateAuthorityDeckPDF }  = require('./src/authorityDeckPdf');
+const { generateVoiceSummary }      = require('./src/voiceSummary');
+const store                         = require('./src/store');
+const slack                         = require('./src/slack');
+const { waitUntil }                 = require('@vercel/functions');
+// Client Strategy Studio (Authority Codex extract/assemble + memory + prompts)
+const { extractDeck, assembleDeck } = require('./src/authorityDeck');
+const prompts                       = require('./src/prompts');
+const memory                        = require('./src/memory');
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -94,6 +99,7 @@ app.post('/api/generate', upload.single('figmaPdf'), async (req, res) => {
       icpListNeeded:   req.body.icpListNeeded === 'true',
       offers,
       figmaPdf: req.file ? req.file.buffer.toString('base64') : null,
+      authorityDeck:   req.body.authorityDeck   || '',
     };
 
     const battlecard = await generateBattlecard(inputs, (tokens) => sseEvent(res, 'progress', { tokens }));
@@ -347,15 +353,115 @@ app.post('/api/export-pdf', async (req, res) => {
     if (!battlecard) return res.status(400).json({ ok: false, error: 'battlecard required' });
 
     const pdfBytes  = await generatePDF(battlecard, {}, pitch || null);
-    const clientSlug = (battlecard.meta?.clientName || 'battlecard')
+    const clientSlug = (battlecard.meta?.clientName || 'podcast-strategy-guide')
       .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${clientSlug}-battlecard.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${clientSlug}-podcast-strategy-guide.pdf"`);
     res.send(Buffer.from(pdfBytes)); // pdfBytes is Uint8Array — Buffer.from is zero-copy
   } catch (err) {
     console.error('[/api/export-pdf]', err.message);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── Authority Codex (Stage 1) ──────────────────────────
+// POST /api/authority/extract  → transcript → review-ready JSON (SSE)
+app.post('/api/authority/extract', async (req, res) => {
+  startSSE(res);
+  try {
+    const extraction = await extractDeck(req.body || {}, (t) => sseEvent(res, 'progress', { tokens: t }));
+    sseEvent(res, 'done', { extraction });
+  } catch (err) {
+    console.error('[/api/authority/extract]', err.message);
+    sseEvent(res, 'error', { error: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// POST /api/authority/generate → confirmed JSON → markdown deck, auto-saved (SSE)
+app.post('/api/authority/generate', async (req, res) => {
+  startSSE(res);
+  try {
+    const { extraction, client, package: pkg, customDeliverables } = req.body || {};
+    if (!extraction) throw new Error('extraction JSON is required');
+    const markdown = await assembleDeck(extraction, pkg, customDeliverables, (t) => sseEvent(res, 'progress', { tokens: t }));
+    // memory.save writes to local disk (data/decks) — on Vercel's read-only
+    // serverless filesystem this throws. A failed save must not kill an
+    // otherwise-successful generation: return the deck, flag saved as null.
+    let saved = null;
+    try {
+      saved = memory.save({
+        email:    (client && client.email) || '',
+        name:     (client && client.name)  || (extraction.client && extraction.client.name) || '',
+        docType:  'authority_deck',
+        package:  pkg || '',
+        json:     extraction,
+        markdown,
+      });
+    } catch (saveErr) {
+      console.warn('[/api/authority/generate] Deck generated but not persisted:', saveErr.message);
+    }
+    sseEvent(res, 'done', {
+      markdown,
+      saved: saved ? { key: saved.key, name: saved.name, email: saved.email, updatedAt: saved.updatedAt } : null,
+    });
+  } catch (err) {
+    console.error('[/api/authority/generate]', err.message);
+    sseEvent(res, 'error', { error: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ── Memory bank ────────────────────────────────────────
+app.get('/api/memory', (req, res) => {
+  res.json({ ok: true, decks: memory.list() });
+});
+
+// Lookup for Stage 2 (define BEFORE /:key so "find" isn't captured as a key).
+app.get('/api/memory/find', (req, res) => {
+  const r = memory.findByClient(req.query.email || '', req.query.name || '');
+  res.json({
+    ok: true,
+    deck: r ? { key: r.key, name: r.name, email: r.email, docType: r.docType, updatedAt: r.updatedAt, json: r.json, markdown: r.markdown } : null,
+  });
+});
+
+app.get('/api/memory/:key', (req, res) => {
+  const r = memory.get(req.params.key);
+  if (!r) return res.status(404).json({ ok: false, error: 'Deck not found' });
+  res.json({ ok: true, deck: r });
+});
+
+app.delete('/api/memory/:key', (req, res) => {
+  res.json({ ok: memory.remove(req.params.key) });
+});
+
+// ── Prompt settings (the AI logic behind each tab) ─────
+// GET    /api/prompts                 → all groups + cards (values + defaults)
+// PUT    /api/prompts/card/:id        → save { text?, model?, maxTokens? }
+// POST   /api/prompts/card/:id/reset  → restore that card's defaults
+app.get('/api/prompts', (req, res) => {
+  res.json({ ok: true, ...prompts.getAll() });
+});
+
+app.put('/api/prompts/card/:id', (req, res) => {
+  try {
+    const card = prompts.save(req.params.id, req.body || {});
+    res.json({ ok: true, card });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/prompts/card/:id/reset', (req, res) => {
+  try {
+    const card = prompts.reset(req.params.id);
+    res.json({ ok: true, card });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
   }
 });
 
