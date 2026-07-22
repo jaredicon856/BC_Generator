@@ -2066,7 +2066,8 @@ async function loadSettings(force) {
   const list = document.getElementById('settings-list');
   list.innerHTML = '<div class="settings-loading">Loading…</div>';
   try {
-    const res = await fetch('/api/prompts');
+    const res = await fetch('/api/prompts', { headers: authHeaders() });
+    checkAuth(res);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Failed to load');
     list.innerHTML = '';
@@ -2163,9 +2164,10 @@ async function saveCard(card) {
   try {
     const res = await fetch('/api/prompts/card/' + id, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
     });
+    checkAuth(res);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Save failed');
     save.classList.add('saved');
@@ -2185,7 +2187,8 @@ async function resetCard(card, label) {
   const id = card.dataset.id;
   brainStatus(card, 'Resetting…');
   try {
-    const res  = await fetch('/api/prompts/card/' + id + '/reset', { method: 'POST' });
+    const res  = await fetch('/api/prompts/card/' + id + '/reset', { method: 'POST', headers: authHeaders() });
+    checkAuth(res);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Reset failed');
     applyCard(card, data.card);
@@ -2334,7 +2337,7 @@ document.getElementById('btn-extract').addEventListener('click', async () => {
   status.textContent = '';
   try {
     const res = await fetch('/api/authority/extract', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         clientName: name, clientEmail: email,
         package: selectedPackage(),
@@ -2347,6 +2350,7 @@ document.getElementById('btn-extract').addEventListener('click', async () => {
         transcript,
       }),
     });
+    checkAuth(res);
     let extraction = null;
     await readSSEStream(res, (event, payload) => {
       if (event === 'done') extraction = payload.extraction;
@@ -2414,7 +2418,7 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
   status.textContent = '';
   try {
     const res = await fetch('/api/authority/generate', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         extraction: json,
         package: selectedPackage(),
@@ -2425,6 +2429,7 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
         },
       }),
     });
+    checkAuth(res);
     let md = '', saved = null;
     await readSSEStream(res, (event, payload) => {
       if (event === 'done') { md = payload.markdown; saved = payload.saved; }
@@ -2550,7 +2555,7 @@ async function loadMemory() {
   const list = document.getElementById('memory-list');
   list.innerHTML = '<div class="memory-empty">Loading…</div>';
   try {
-    const data = await (await fetch('/api/memory')).json();
+    const data = await (await fetch('/api/memory', { headers: authHeaders() })).json();
     if (!data.decks.length) { list.innerHTML = '<div class="memory-empty">No decks saved yet. Generate an Authority Codex in Stage 1 and it will appear here.</div>'; return; }
     list.innerHTML = '';
     data.decks.forEach(d => {
@@ -2577,7 +2582,7 @@ async function loadMemory() {
   }
 }
 async function viewDeck(key) {
-  const data = await (await fetch('/api/memory/' + key)).json();
+  const data = await (await fetch('/api/memory/' + key, { headers: authHeaders() })).json();
   if (!data.ok) return;
   authorityMarkdown = data.deck.markdown || ''; authoritySaved = { name: data.deck.name, email: data.deck.email, updatedAt: data.deck.updatedAt };
   renderDeckStep(authorityMarkdown, authoritySaved);
@@ -2590,7 +2595,7 @@ function useDeck(d) {
 }
 async function delDeck(d) {
   if (!confirm('Delete the saved Authority Codex for "' + (d.name || d.email) + '"? This cannot be undone.')) return;
-  await fetch('/api/memory/' + d.key, { method: 'DELETE' });
+  await fetch('/api/memory/' + d.key, { method: 'DELETE', headers: authHeaders() });
   loadMemory();
 }
 
@@ -2625,7 +2630,7 @@ async function doDeckLookup() {
   }
   try {
     const q = new URLSearchParams({ email, name }).toString();
-    const data = await (await fetch('/api/memory/find?' + q)).json();
+    const data = await (await fetch('/api/memory/find?' + q, { headers: authHeaders() })).json();
     if (data.deck) {
       resolvedDeck = data.deck;
       const when = new Date(data.deck.updatedAt).toLocaleDateString();
