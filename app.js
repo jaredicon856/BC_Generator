@@ -192,18 +192,33 @@ app.post('/api/webhook/fathom', async (req, res) => {
   res.json({ ok: true, accepted: true, phase, clientName, storeKey });
 
   waitUntil(
-    processFathomCall({ phase, clientName, storeKey, transcript, presentedDate, recordingId }).catch((err) => {
+    processFathomCall({ phase, clientName, clientKey, storeKey, transcript, presentedDate, recordingId }).catch((err) => {
       console.error('[webhook/fathom] Background processing failed:', err.message);
     })
   );
 });
 
-async function processFathomCall({ phase, clientName, storeKey, transcript, presentedDate, recordingId }) {
+async function processFathomCall({ phase, clientName, clientKey, storeKey, transcript, presentedDate, recordingId }) {
   if (recordingId) await store.set(`processed:${recordingId}`, true);
 
   if (phase === 1) {
     const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
     await store.set(`authorityDeck:${storeKey}`, authorityDeck);
+
+    // Bridge: also save to the Studio's Memory Bank so a webhook-generated
+    // deck shows up in the UI and Stage 2's client lookup. Non-fatal.
+    try {
+      await memory.save({
+        email:   clientKey || '',
+        name:    clientName,
+        docType: 'authority_deck',
+        package: '',
+        json:    authorityDeck,
+        markdown: '',
+      });
+    } catch (memErr) {
+      console.warn('[webhook/fathom] Could not save deck to Studio Memory Bank:', memErr.message);
+    }
     const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
     console.log(`[webhook/fathom] Phase 1 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes`);
 
@@ -411,6 +426,38 @@ app.post('/api/authority/generate', async (req, res) => {
     } catch (saveErr) {
       console.warn('[/api/authority/generate] Deck generated but not persisted:', saveErr.message);
     }
+
+    // Bridge: mirror the deck into the webhook pipeline's store so a Fathom
+    // "Strategy Call 2" webhook finds it even though Call 1 happened in the
+    // Studio. Same key convention as the webhook (normalized email, falling
+    // back to name). generateBattlecard accepts the markdown string directly.
+    const bridgeName  = (client && client.name)  || (extraction.client && extraction.client.name) || '';
+    const bridgeEmail = (client && client.email) || '';
+    const bridgeKey   = normalizeKey(bridgeEmail || bridgeName);
+    if (bridgeKey) {
+      try {
+        await store.set(`authorityDeck:${bridgeKey}`, markdown);
+      } catch (storeErr) {
+        console.warn('[/api/authority/generate] Could not mirror deck for webhook Call 2:', storeErr.message);
+      }
+    }
+
+    // Bridge: announce Studio-generated codexes in Slack, same channel and
+    // style as the webhook pipeline. Non-fatal.
+    const studioDeckChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
+    if (studioDeckChannel) {
+      try {
+        await slack.uploadFile(
+          studioDeckChannel,
+          Buffer.from(markdown, 'utf8'),
+          `${bridgeName || 'Client'} - Authority Codex.md`,
+          `<!channel> :page_facing_up: *Authority Codex generated in the Studio* for *${bridgeName || bridgeKey}*${saved ? ` (Memory Bank: ${saved.key})` : ''}`
+        );
+      } catch (slackErr) {
+        console.warn('[/api/authority/generate] Slack delivery failed:', slackErr.message);
+      }
+    }
+
     sseEvent(res, 'done', {
       markdown,
       saved: saved ? { key: saved.key, name: saved.name, email: saved.email, updatedAt: saved.updatedAt } : null,
