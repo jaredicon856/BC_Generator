@@ -56,9 +56,12 @@ Return this exact JSON structure:
     "booleanString": ""
   },
   "bookingForm": {
-    "qualifyingQuestions": [ { "question": "", "disqualifyingAnswers": [] } ],
-    "strongFitSignals": [],
-    "referralDetectionQuestions": [ { "question": "", "options": [], "signalNote": "" } ]
+    "personalDetails": [],
+    "coreQuestions": [
+      { "role": "", "question": "", "type": "", "options": [], "dqAnswers": [], "strongFitAnswers": [], "referralSignal": "" }
+    ],
+    "interviewFit": [ { "question": "", "type": "paragraph" } ],
+    "alternates": [ { "role": "", "question": "", "options": [], "dqAnswers": [] } ]
   },
   "offerMatchingGuide": [
     { "partnerType": "", "leadOffer": "", "positioningAngle": "", "relationshipType": "" }
@@ -70,12 +73,11 @@ If icpListNeeded is false, set icpList to null. If icpListNeeded is true, popula
 
 // ── Strategy Guide: per-tab rule blocks ────────────────
 // Each is layered onto STRATEGY_BASE for the single generation call.
-const SECTION_ORDER  = ['irp', 'icp', 'booking', 'referral', 'matching'];
+const SECTION_ORDER  = ['irp', 'icp', 'booking', 'matching'];
 const SECTION_LABELS = {
   irp:      'IRP List',
   icp:      'ICP List',
-  booking:  'Booking Form',
-  referral: 'Referral Detection',
+  booking:  'Q/DQ Form',
   matching: 'Offer Matching',
 };
 const SECTION_DEFAULTS = {
@@ -93,14 +95,16 @@ const SECTION_DEFAULTS = {
 These are the host's IDEAL CLIENTS / BUYERS — the people who would purchase the offer — NOT referral partners.
 Use the same field structure as the IRP List (jobTitles, seniorityLevels, industryTags, companySize, geography, keywords, intentSignals, booleanString), but target the actual buyer profile derived from the offer stack and transcript.`,
 
-  booking: `Build the guest / lead qualifying form.
-- qualifyingQuestions: each question paired with disqualifyingAnswers — answers that signal a poor fit and should screen the person out.
-- strongFitSignals: answers or traits that indicate an especially strong fit.
-Base every question on what the host actually said matters. Avoid generic screening questions.`,
-
-  referral: `Produce referralDetectionQuestions used during the call / booking to surface warm referral partners.
-- Each question includes options (the answer choices) and a signalNote explaining what a given answer reveals about the person's referral potential.
-Focus on uncovering network access, willingness to refer, and proximity to the host's ideal clients.`,
+  booking: `Build the Q/DQ FORM — a SHORT, DIRECT guest-qualifying application. Two layers: the GUEST-FACING form (clean questions only) and the HOST KEY (the DQ answers + signals underneath). Derive every question from THIS host's podcast, offer, and ICP — never generic, never copied from any example.
+- personalDetails: the standard capture fields — exactly ["Full name","Email","Phone","LinkedIn profile URL"].
+- coreQuestions: EXACTLY 3 questions, one per role, in this order:
+  1. role "fit" — screens whether they match the host's ideal guest/buyer profile (usually multiple_choice).
+  2. role "credibility" — screens whether they have the real experience/authority to be a strong guest (usually multiple_choice).
+  3. role "network" — the STEALTH REFERRAL question. It MUST read like a normal "who do you serve / how do you reach your people" question. NEVER mention referrals, partnerships, or detection to the guest (usually multiple_choice).
+  Each core question has: question (guest-facing text), type ("multiple_choice" or "short_answer"), options (answer choices for MC), dqAnswers (the EXACT options that disqualify — crisp, specific, unambiguous; THIS IS THE MOST IMPORTANT FIELD; use [] only if there is truly no disqualifier), strongFitAnswers (options that signal a strong yes — internal), and referralSignal (ONLY for role "network": ONE internal line on what the answers reveal about referral/partnership potential — host-only; leave "" for fit/credibility).
+- interviewFit: 1–2 OPEN paragraph questions (type "paragraph") assessing guest quality/story (e.g. what sets them apart; the one insight or story they'd leave the audience with). No dqAnswers.
+- alternates: 2–3 swap-in questions total, each tagged with its role ("fit"/"credibility"/"network"), each with its own options + dqAnswers, so the host can tune the form.
+Keep it SHORT and DIRECT (a tight application, not a long survey). Make the dqAnswers explicit — they are the core deliverable. NEVER put the words "referral", "partnership", or "detection" in any guest-facing question or option.`,
 
   matching: `Produce the offerMatchingGuide mapping each partner type to the right lead offer and angle.
 - partnerType: the kind of referral partner.

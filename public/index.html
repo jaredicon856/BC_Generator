@@ -963,8 +963,28 @@
     font-weight: 700;
     letter-spacing: 0.6px;
     text-transform: uppercase;
+    color: #c0392b;
+    margin: 10px 0 5px;
+  }
+  .fit-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #059669;
+    margin: 10px 0 5px;
+  }
+  .qdq-role {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
     color: var(--brand-accent-mid);
-    margin-bottom: 5px;
+    background: var(--brand-accent-soft, #fbf6e9);
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-bottom: 8px;
   }
 
   .strong-fit-item {
@@ -995,7 +1015,6 @@
     margin-top: 8px;
   }
 
-  .signal-note::before { content: 'Signal: '; font-style: normal; font-weight: 600; }
 
   .options-list {
     display: flex;
@@ -1724,8 +1743,7 @@
     <nav id="tab-bar">
       <button class="tab-btn active" data-tab="irp">IRP List</button>
       <button class="tab-btn" data-tab="icp" id="tab-btn-icp" style="display:none">ICP List</button>
-      <button class="tab-btn" data-tab="booking">Booking Form</button>
-      <button class="tab-btn" data-tab="referral">Referral Detection</button>
+      <button class="tab-btn" data-tab="booking">Q/DQ Form</button>
       <button class="tab-btn" data-tab="matching">Offer Matching</button>
       <button class="tab-btn" data-tab="pitch" id="tab-btn-pitch">Referral Pitch</button>
     </nav>
@@ -1763,15 +1781,12 @@
         <div class="bc-section" id="icp-boolean"></div>
       </div>
 
-      <!-- Booking Form Tab -->
+      <!-- Q/DQ Form Tab -->
       <div class="tab-panel" id="tab-booking">
+        <div class="bc-section" id="booking-personal"></div>
         <div class="bc-section" id="booking-questions"></div>
-        <div class="bc-section" id="booking-strong-fit"></div>
-      </div>
-
-      <!-- Referral Detection Tab -->
-      <div class="tab-panel" id="tab-referral">
-        <div class="bc-section" id="referral-questions"></div>
+        <div class="bc-section" id="booking-fit"></div>
+        <div class="bc-section" id="booking-alternates"></div>
       </div>
 
       <!-- Offer Matching Tab -->
@@ -2708,7 +2723,6 @@ async function generatePitchFlow(bc) {
 function renderBattlecard(bc) {
   renderIRP(bc);
   renderBooking(bc);
-  renderReferral(bc);
   renderMatching(bc);
 
   if (bc.icpList) renderICP(bc.icpList);
@@ -2909,53 +2923,62 @@ function renderIRP(bc) {
   });
 }
 
+const QDQ_ROLE_LABEL = { fit: 'Fit', credibility: 'Credibility', network: 'Network' };
+const NONE_HTML = '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
+
 function renderBooking(bc) {
   const form = bc.bookingForm || {};
-  const questions = form.qualifyingQuestions || [];
-  const strongFit = form.strongFitSignals || [];
+  const pd    = form.personalDetails || [];
+  const core  = form.coreQuestions   || [];
+  const fit   = form.interviewFit    || [];
+  const alts  = form.alternates      || [];
 
-  let qHtml = `<div class="bc-section-title">Qualifying Questions</div>`;
-  questions.forEach(q => {
+  // §1 — Personal Details (guest-facing capture)
+  let pdHtml = `<div class="bc-section-title">Section 1 · Personal Details</div>`;
+  const pdFields = pd.length ? pd : ['Full name', 'Email', 'Phone', 'LinkedIn profile URL'];
+  pdHtml += `<div class="bc-card"><div class="options-list">${pdFields.map(f => `<div class="option-item">${esc(f)}</div>`).join('')}</div></div>`;
+  setSection('booking-personal', pdHtml);
+
+  // §2 — About You & Your Work (the 3 core Q/DQ questions + host key)
+  let qHtml = `<div class="bc-section-title">Section 2 · About You &amp; Your Work</div>`;
+  core.forEach((q, i) => {
     qHtml += `<div class="bc-card">
+      <div class="qdq-role">Q${i + 1} · ${esc(QDQ_ROLE_LABEL[q.role] || q.role || '')}</div>
       <div class="bc-card-title">${esc(q.question)}</div>`;
-    if (q.disqualifyingAnswers && q.disqualifyingAnswers.length) {
-      qHtml += `<div class="dq-label">Disqualify if selected</div>`;
-      q.disqualifyingAnswers.forEach(a => {
-        qHtml += `<div class="dq-item">${esc(a)}</div>`;
-      });
+    if ((q.options || []).length) {
+      qHtml += `<div class="options-list">${q.options.map(o => `<div class="option-item">${esc(o)}</div>`).join('')}</div>`;
+    }
+    if ((q.dqAnswers || []).length) {
+      qHtml += `<div class="dq-label">⛔ DQ if selected</div>` + q.dqAnswers.map(a => `<div class="dq-item">${esc(a)}</div>`).join('');
+    }
+    if ((q.strongFitAnswers || []).length) {
+      qHtml += `<div class="fit-label">✅ Strong fit</div>` + q.strongFitAnswers.map(a => `<div class="strong-fit-item">${esc(a)}</div>`).join('');
+    }
+    if (q.referralSignal) {
+      qHtml += `<div class="signal-note">🔒 Internal signal (host only): ${esc(q.referralSignal)}</div>`;
     }
     qHtml += '</div>';
   });
-  setSection('booking-questions', qHtml || '<p style="color:var(--brand-muted);font-size:13px">(none)</p>');
+  setSection('booking-questions', core.length ? qHtml : `<div class="bc-section-title">Section 2 · About You &amp; Your Work</div>${NONE_HTML}`);
 
-  let sfHtml = `<div class="bc-section-title">Strong Fit Signals</div>`;
-  if (strongFit.length) {
-    strongFit.forEach(s => {
-      sfHtml += `<div class="strong-fit-item">${esc(s)}</div>`;
-    });
-  } else {
-    sfHtml += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
-  }
-  setSection('booking-strong-fit', sfHtml);
-}
+  // §3 — Interview Fit (open questions)
+  let ifHtml = `<div class="bc-section-title">Section 3 · Interview Fit</div>`;
+  if (fit.length) {
+    fit.forEach(q => { ifHtml += `<div class="bc-card"><div class="bc-card-title">${esc(q.question)}</div><div class="bc-card-body" style="opacity:.55">(paragraph answer)</div></div>`; });
+  } else { ifHtml += NONE_HTML; }
+  setSection('booking-fit', ifHtml);
 
-function renderReferral(bc) {
-  const questions = bc.bookingForm?.referralDetectionQuestions || [];
-  let html = `<div class="bc-section-title">Referral Detection Questions</div>`;
-  if (questions.length) {
-    questions.forEach(q => {
-      html += `<div class="bc-card">
-        <div class="bc-card-title">${esc(q.question)}</div>
-        <div class="options-list">
-          ${(q.options || []).map(o => `<div class="option-item">${esc(o)}</div>`).join('')}
-        </div>
-        ${q.signalNote ? `<div class="signal-note">${esc(q.signalNote)}</div>` : ''}
-      </div>`;
+  // Alternate Questions bank (host tuning)
+  let altHtml = `<div class="bc-section-title">Alternate Questions</div>`;
+  if (alts.length) {
+    alts.forEach(q => {
+      altHtml += `<div class="bc-card"><div class="qdq-role">${esc(QDQ_ROLE_LABEL[q.role] || q.role || '')}</div><div class="bc-card-title">${esc(q.question)}</div>`;
+      if ((q.options || []).length) altHtml += `<div class="options-list">${q.options.map(o => `<div class="option-item">${esc(o)}</div>`).join('')}</div>`;
+      if ((q.dqAnswers || []).length) altHtml += `<div class="dq-label">⛔ DQ if selected</div>` + q.dqAnswers.map(a => `<div class="dq-item">${esc(a)}</div>`).join('');
+      altHtml += '</div>';
     });
-  } else {
-    html += '<p style="color:var(--brand-muted);font-size:13px">(none)</p>';
-  }
-  setSection('referral-questions', html);
+  } else { altHtml += NONE_HTML; }
+  setSection('booking-alternates', altHtml);
 }
 
 function renderMatching(bc) {
