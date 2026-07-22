@@ -2435,6 +2435,9 @@ document.getElementById('btn-generate-deck').addEventListener('click', async () 
       if (event === 'done') { md = payload.markdown; saved = payload.saved; }
       else if (event === 'error') throw new Error(payload.error);
     });
+    // A stream cut off mid-generation (e.g. function timeout) ends with no
+    // done event — surface that instead of rendering an empty deck.
+    if (!md) throw new Error('No deck returned — the generation may have timed out. Please try again.');
     authorityMarkdown = md; authoritySaved = saved;
     renderDeckStep(md, saved);
     gotoStep(3);
