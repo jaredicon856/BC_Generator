@@ -377,6 +377,65 @@
 
   #deck-drop-zone.has-file #deck-file-name { color: var(--brand-text); }
 
+  /* Additional Reference Documents — same treatment, supports a list of chips */
+  #ancillary-drop-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px dashed var(--brand-border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fff;
+  }
+
+  #ancillary-drop-zone:hover { border-color: var(--brand-accent-mid); background: var(--brand-card-bg); }
+
+  #ancillary-file-hint {
+    font-size: 12px;
+    color: var(--brand-muted);
+    flex: 1;
+  }
+
+  #ancillary-file-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .ancillary-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--brand-text);
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 20px;
+    padding: 4px 6px 4px 10px;
+    max-width: 100%;
+  }
+
+  .ancillary-chip span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+  }
+
+  .ancillary-chip button {
+    all: unset;
+    cursor: pointer;
+    color: var(--brand-muted);
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+
+  .ancillary-chip button:hover { color: var(--brand-accent-mid); }
+
   /* Offer stack section — hidden by default */
   #offer-stack-section {
     display: none;
@@ -1635,6 +1694,17 @@
     <textarea id="deck-upload" placeholder="…or paste the client's Authority Codex text here to use it as context."></textarea>
 
     <div class="divider"></div>
+    <div class="form-section-title">Additional Reference Documents</div>
+    <div class="form-group">
+      <label id="ancillary-file-label" for="ancillary-files">Upload supporting docs <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(.pdf, .md, or .txt — brand guides, past call notes, other codices, etc.)</span></label>
+      <label id="ancillary-drop-zone" for="ancillary-files">
+        <input type="file" id="ancillary-files" accept=".pdf,.md,.markdown,.txt" multiple style="display:none" />
+        <span id="ancillary-file-hint">Choose file(s)…</span>
+      </label>
+      <div id="ancillary-file-list"></div>
+    </div>
+
+    <div class="divider"></div>
 
     <div class="form-group">
       <label>Podcast Name</label>
@@ -2706,6 +2776,35 @@ document.getElementById('deck-file').addEventListener('change', function() {
   renderDeckBanner();
 });
 
+// ── Additional Reference Documents (multiple; any mix of PDFs and text sent as-is to the server) ──
+let ancillaryFiles = [];
+function renderAncillaryList() {
+  const list = document.getElementById('ancillary-file-list');
+  list.innerHTML = '';
+  ancillaryFiles.forEach((file, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'ancillary-chip';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = file.name;
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove';
+    removeBtn.addEventListener('click', () => {
+      ancillaryFiles.splice(i, 1);
+      renderAncillaryList();
+    });
+    chip.appendChild(nameSpan);
+    chip.appendChild(removeBtn);
+    list.appendChild(chip);
+  });
+}
+document.getElementById('ancillary-files').addEventListener('change', function() {
+  ancillaryFiles = ancillaryFiles.concat(Array.from(this.files));
+  this.value = ''; // allow re-selecting the same file, and let repeated picks add rather than replace
+  renderAncillaryList();
+});
+
 // ── Generate ───────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', async () => {
   clearError();
@@ -2733,6 +2832,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     const pdfFile = document.getElementById('figma-pdf').files[0];
     if (pdfFile) fd.append('figmaPdf', pdfFile);
     if (authorityDeckFile) fd.append('authorityDeckPdf', authorityDeckFile);
+    ancillaryFiles.forEach(f => fd.append('ancillaryDocs', f));
 
     const res = await fetch('/api/generate', { method: 'POST', body: fd });
     await readSSEStream(res, (event, payload) => {
