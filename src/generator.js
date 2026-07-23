@@ -15,6 +15,7 @@ async function generateBattlecard(inputs, onProgress) {
     icpListNeeded,
     figmaPdf,
     authorityDeck,
+    authorityDeckPdf,
   } = inputs;
 
   const textContent = `
@@ -24,6 +25,7 @@ Niche / Topic Focus: ${niche || '(not provided)'}
 Geography: ${geography || 'North America'}
 ICP List Needed: ${icpListNeeded ? 'Yes' : 'No'}
 ${figmaPdf ? 'Figma PDF: attached — extract offer stack from it.' : ''}
+${authorityDeckPdf ? 'Client Authority Deck: attached as a PDF — use it as authoritative context for this client\'s story, north star, ICP, and positioning.' : ''}
 ${authorityDeck ? `Client Authority Deck (Stage 1 output — use as authoritative context for this client's story, north star, ICP, and positioning):
 ${authorityDeck}
 ` : ''}
@@ -43,14 +45,12 @@ ${transcript || '(none provided — derive from structured inputs above)'}
 Generate the full battlecard JSON now. Set generatedAt to: ${new Date().toISOString()}
 `.trim();
 
-  const userMessage = figmaPdf
-    ? [
-        {
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: figmaPdf },
-        },
-        { type: 'text', text: textContent },
-      ]
+  const documentBlocks = [];
+  if (figmaPdf) documentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: figmaPdf } });
+  if (authorityDeckPdf) documentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: authorityDeckPdf } });
+
+  const userMessage = documentBlocks.length
+    ? [...documentBlocks, { type: 'text', text: textContent }]
     : textContent;
 
   const cfg = getConfig('battlecard');

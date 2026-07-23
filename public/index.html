@@ -345,6 +345,38 @@
 
   #figma-drop-zone.has-file #figma-file-name { color: var(--brand-text); }
 
+  /* Authority Codex upload zone — same treatment as Figma */
+  #deck-drop-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px dashed var(--brand-border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fff;
+  }
+
+  #deck-drop-zone:hover { border-color: var(--brand-accent-mid); background: var(--brand-card-bg); }
+
+  #deck-drop-zone.has-file {
+    border-style: solid;
+    border-color: var(--brand-accent-mid);
+    background: var(--brand-card-bg);
+  }
+
+  #deck-file-name {
+    font-size: 12px;
+    color: var(--brand-muted);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #deck-drop-zone.has-file #deck-file-name { color: var(--brand-text); }
+
   /* Offer stack section — hidden by default */
   #offer-stack-section {
     display: none;
@@ -1593,7 +1625,14 @@
       <span class="db-title">Checking Memory Bank…</span>
       Enter the client's name or email to pull their saved Authority Codex.
     </div>
-    <textarea id="deck-upload" placeholder="No saved deck? Paste the client's Authority Codex here to use it as context." style="display:none"></textarea>
+    <div class="form-group">
+      <label id="deck-file-label" for="deck-file">Upload Authority Codex <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(.pdf, .md, or .txt — overrides Memory Bank)</span></label>
+      <label id="deck-drop-zone" for="deck-file">
+        <input type="file" id="deck-file" accept=".pdf,.md,.markdown,.txt" style="display:none" />
+        <span id="deck-file-name">Choose file…</span>
+      </label>
+    </div>
+    <textarea id="deck-upload" placeholder="…or paste the client's Authority Codex text here to use it as context."></textarea>
 
     <div class="divider"></div>
 
@@ -2575,13 +2614,45 @@ async function delDeck(d) {
 // ══════════════════════════════════════════════════════
 //  STAGE 2 — Authority Codex banner + resolution
 // ══════════════════════════════════════════════════════
-let resolvedDeck = null; // memory record found for the current client
+let resolvedDeck = null;       // memory record found for the current client
+let authorityDeckFile = null;  // uploaded PDF (sent to the model directly) — takes priority over memory
 
 function resolvedDeckText() {
   const up = document.getElementById('deck-upload').value.trim();
   if (up) return up;
   if (resolvedDeck) return resolvedDeck.markdown || JSON.stringify(resolvedDeck.json || {});
   return '';
+}
+
+// Manual upload (file or paste) always wins over the Memory Bank match.
+function renderDeckBanner() {
+  const banner = document.getElementById('deck-banner');
+  const pasted = document.getElementById('deck-upload').value.trim();
+  if (authorityDeckFile) {
+    banner.className = 'found';
+    banner.innerHTML = `<span class="db-title">✓ Using uploaded file "${authorityDeckFile.name.replace(/</g,'&lt;')}"</span>This overrides the Memory Bank for this generation.`;
+    return;
+  }
+  if (pasted) {
+    banner.className = 'found';
+    banner.innerHTML = `<span class="db-title">✓ Using pasted Authority Codex</span>This overrides the Memory Bank for this generation.`;
+    return;
+  }
+  const name = document.getElementById('client-name').value.trim();
+  const email = document.getElementById('client-email').value.trim();
+  if (!name && !email) {
+    banner.className = 'missing';
+    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Codex, or upload one below.';
+    return;
+  }
+  if (resolvedDeck) {
+    const when = new Date(resolvedDeck.updatedAt).toLocaleDateString();
+    banner.className = 'found';
+    banner.innerHTML = `<span class="db-title">✓ Using ${(resolvedDeck.name || resolvedDeck.email).replace(/</g,'&lt;')}'s Authority Codex</span>Saved ${when}. It will be fed into the Podcast Strategy Guide as context.`;
+  } else {
+    banner.className = 'missing';
+    banner.innerHTML = `<span class="db-title">No saved Authority Codex for this client</span>Generate one in Stage 1, or upload/paste it below to use it now.`;
+  }
 }
 
 let deckLookupTimer = null;
@@ -2592,34 +2663,48 @@ function refreshDeckBanner() {
 async function doDeckLookup() {
   const name = document.getElementById('client-name').value.trim();
   const email = document.getElementById('client-email').value.trim();
-  const banner = document.getElementById('deck-banner');
-  const upload = document.getElementById('deck-upload');
   if (!name && !email) {
     resolvedDeck = null;
-    banner.className = 'missing';
-    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Codex.';
-    upload.style.display = 'none';
+    renderDeckBanner();
     return;
   }
   try {
     const q = new URLSearchParams({ email, name }).toString();
     const data = await (await fetch('/api/memory/find?' + q)).json();
-    if (data.deck) {
-      resolvedDeck = data.deck;
-      const when = new Date(data.deck.updatedAt).toLocaleDateString();
-      banner.className = 'found';
-      banner.innerHTML = `<span class="db-title">✓ Using ${(data.deck.name || data.deck.email).replace(/</g,'&lt;')}'s Authority Codex</span>Saved ${when}. It will be fed into the Podcast Strategy Guide as context.`;
-      upload.style.display = 'none'; upload.value = '';
-    } else {
-      resolvedDeck = null;
-      banner.className = 'missing';
-      banner.innerHTML = `<span class="db-title">No saved Authority Codex for this client</span>Generate one in Stage 1, or paste it below to use it now.`;
-      upload.style.display = '';
-    }
+    resolvedDeck = data.deck || null;
+    renderDeckBanner();
   } catch (_) { /* leave banner as-is on transient error */ }
 }
 document.getElementById('client-name').addEventListener('input', refreshDeckBanner);
 document.getElementById('client-email').addEventListener('input', refreshDeckBanner);
+document.getElementById('deck-upload').addEventListener('input', renderDeckBanner);
+
+// ── Authority Codex file upload (.pdf sent to the model directly; .md/.txt read as text) ──
+document.getElementById('deck-file').addEventListener('change', function() {
+  const zone = document.getElementById('deck-drop-zone');
+  const label = document.getElementById('deck-file-name');
+  const textarea = document.getElementById('deck-upload');
+  const file = this.files[0];
+  if (!file) {
+    authorityDeckFile = null;
+    label.textContent = 'Choose file…';
+    zone.classList.remove('has-file');
+    renderDeckBanner();
+    return;
+  }
+  label.textContent = file.name;
+  zone.classList.add('has-file');
+  if (/\.pdf$/i.test(file.name)) {
+    authorityDeckFile = file;
+    textarea.value = '';
+  } else {
+    authorityDeckFile = null;
+    const reader = new FileReader();
+    reader.onload = () => { textarea.value = reader.result; renderDeckBanner(); };
+    reader.readAsText(file);
+  }
+  renderDeckBanner();
+});
 
 // ── Generate ───────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', async () => {
@@ -2647,6 +2732,7 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 
     const pdfFile = document.getElementById('figma-pdf').files[0];
     if (pdfFile) fd.append('figmaPdf', pdfFile);
+    if (authorityDeckFile) fd.append('authorityDeckPdf', authorityDeckFile);
 
     const res = await fetch('/api/generate', { method: 'POST', body: fd });
     await readSSEStream(res, (event, payload) => {
