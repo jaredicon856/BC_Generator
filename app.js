@@ -91,11 +91,15 @@ function normalizeKey(s) {
 
 
 // ── POST /api/generate ─────────────────────────────────
-app.post('/api/generate', upload.single('figmaPdf'), async (req, res) => {
+app.post('/api/generate', upload.fields([{ name: 'figmaPdf', maxCount: 1 }, { name: 'authorityDeckPdf', maxCount: 1 }, { name: 'ancillaryDocs', maxCount: 10 }]), async (req, res) => {
   startSSE(res);
   try {
     let offers = [];
     try { offers = req.body.offers ? JSON.parse(req.body.offers) : []; } catch (_) {}
+
+    const figmaFile = req.files?.figmaPdf?.[0];
+    const authorityDeckFile = req.files?.authorityDeckPdf?.[0];
+    const ancillaryFiles = req.files?.ancillaryDocs || [];
 
     const inputs = {
       clientName:      req.body.clientName      || '',
@@ -107,8 +111,15 @@ app.post('/api/generate', upload.single('figmaPdf'), async (req, res) => {
       transcript:      req.body.transcript      || '',
       icpListNeeded:   req.body.icpListNeeded === 'true',
       offers,
-      figmaPdf: req.file ? req.file.buffer.toString('base64') : null,
+      figmaPdf: figmaFile ? figmaFile.buffer.toString('base64') : null,
       authorityDeck:   req.body.authorityDeck   || '',
+      authorityDeckPdf: authorityDeckFile ? authorityDeckFile.buffer.toString('base64') : null,
+      ancillaryDocs: ancillaryFiles.map(f => ({
+        name: f.originalname,
+        isPdf: /\.pdf$/i.test(f.originalname),
+        base64: f.buffer.toString('base64'),
+        text: /\.pdf$/i.test(f.originalname) ? null : f.buffer.toString('utf8'),
+      })),
     };
 
     const battlecard = await generateBattlecard(inputs, (tokens) => sseEvent(res, 'progress', { tokens }));

@@ -16,7 +16,12 @@ async function generateBattlecard(inputs, onProgress) {
     icpListNeeded,
     figmaPdf,
     authorityDeck,
+    authorityDeckPdf,
+    ancillaryDocs,
   } = inputs;
+
+  const ancillaryTextDocs = (ancillaryDocs || []).filter(d => !d.isPdf);
+  const ancillaryPdfDocs  = (ancillaryDocs || []).filter(d => d.isPdf);
 
   const textContent = `
 Client Name: ${clientName || '(not provided)'}
@@ -25,9 +30,12 @@ Niche / Topic Focus: ${niche || '(not provided)'}
 Geography: ${geography || 'North America'}
 ICP List Needed: ${icpListNeeded ? 'Yes' : 'No'}
 ${figmaPdf ? 'Figma PDF: attached — extract offer stack from it.' : ''}
+${authorityDeckPdf ? 'Client Authority Deck: attached as a PDF — use it as authoritative context for this client\'s story, north star, ICP, and positioning.' : ''}
 ${authorityDeck ? `Client Authority Deck (established context from Strategy Call 1 — authoritative for this client's story, north star, offer stack, ICP, and positioning; use for continuity rather than re-deriving):
 ${typeof authorityDeck === 'string' ? authorityDeck : JSON.stringify(authorityDeck)}
 ` : ''}
+${ancillaryPdfDocs.length ? `Additional Reference Documents attached as PDFs (supplementary context beyond the Authority Codex — e.g. brand guides, past call notes, other codices; not necessarily structured like the Authority Codex): ${ancillaryPdfDocs.map(d => d.name).join(', ')}` : ''}
+${ancillaryTextDocs.map(d => `Additional Reference Document — "${d.name}" (supplementary context, not necessarily structured like the Authority Codex):\n${d.text}`).join('\n\n')}
 
 ${(offers && offers.length) ? `Manual Offer Stack (use only if Figma PDF not provided or incomplete):
 ${offers.map((o, i) => `  ${i + 1}. Name: ${o.name} | Format: ${o.format} | Price: ${o.price} | Transformation: ${o.transformation}`).join('\n')}` : ''}
@@ -44,14 +52,13 @@ ${transcript || '(none provided — derive from structured inputs above)'}
 Generate the full battlecard JSON now. Set generatedAt to: ${new Date().toISOString()}
 `.trim();
 
-  const userMessage = figmaPdf
-    ? [
-        {
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: figmaPdf },
-        },
-        { type: 'text', text: textContent },
-      ]
+  const documentBlocks = [];
+  if (figmaPdf) documentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: figmaPdf } });
+  if (authorityDeckPdf) documentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: authorityDeckPdf } });
+  ancillaryPdfDocs.forEach(d => documentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: d.base64 } }));
+
+  const userMessage = documentBlocks.length
+    ? [...documentBlocks, { type: 'text', text: textContent }]
     : textContent;
 
   const cfg = getConfig('battlecard');

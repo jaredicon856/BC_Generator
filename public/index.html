@@ -345,6 +345,97 @@
 
   #figma-drop-zone.has-file #figma-file-name { color: var(--brand-text); }
 
+  /* Authority Codex upload zone — same treatment as Figma */
+  #deck-drop-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px dashed var(--brand-border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fff;
+  }
+
+  #deck-drop-zone:hover { border-color: var(--brand-accent-mid); background: var(--brand-card-bg); }
+
+  #deck-drop-zone.has-file {
+    border-style: solid;
+    border-color: var(--brand-accent-mid);
+    background: var(--brand-card-bg);
+  }
+
+  #deck-file-name {
+    font-size: 12px;
+    color: var(--brand-muted);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #deck-drop-zone.has-file #deck-file-name { color: var(--brand-text); }
+
+  /* Additional Reference Documents — same treatment, supports a list of chips */
+  #ancillary-drop-zone {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px dashed var(--brand-border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fff;
+  }
+
+  #ancillary-drop-zone:hover { border-color: var(--brand-accent-mid); background: var(--brand-card-bg); }
+
+  #ancillary-file-hint {
+    font-size: 12px;
+    color: var(--brand-muted);
+    flex: 1;
+  }
+
+  #ancillary-file-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .ancillary-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--brand-text);
+    background: var(--brand-card-bg);
+    border: 1px solid var(--brand-border);
+    border-radius: 20px;
+    padding: 4px 6px 4px 10px;
+    max-width: 100%;
+  }
+
+  .ancillary-chip span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+  }
+
+  .ancillary-chip button {
+    all: unset;
+    cursor: pointer;
+    color: var(--brand-muted);
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+
+  .ancillary-chip button:hover { color: var(--brand-accent-mid); }
+
   /* Offer stack section — hidden by default */
   #offer-stack-section {
     display: none;
@@ -1593,7 +1684,25 @@
       <span class="db-title">Checking Memory Bank…</span>
       Enter the client's name or email to pull their saved Authority Codex.
     </div>
-    <textarea id="deck-upload" placeholder="No saved deck? Paste the client's Authority Codex here to use it as context." style="display:none"></textarea>
+    <div class="form-group">
+      <label id="deck-file-label" for="deck-file">Upload Authority Codex <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(.pdf, .md, or .txt — overrides Memory Bank)</span></label>
+      <label id="deck-drop-zone" for="deck-file">
+        <input type="file" id="deck-file" accept=".pdf,.md,.markdown,.txt" style="display:none" />
+        <span id="deck-file-name">Choose file…</span>
+      </label>
+    </div>
+    <textarea id="deck-upload" placeholder="…or paste the client's Authority Codex text here to use it as context."></textarea>
+
+    <div class="divider"></div>
+    <div class="form-section-title">Additional Reference Documents</div>
+    <div class="form-group">
+      <label id="ancillary-file-label" for="ancillary-files">Upload supporting docs <span style="opacity:.5;font-size:10px;text-transform:none;letter-spacing:0">(.pdf, .md, or .txt — brand guides, past call notes, other codices, etc.)</span></label>
+      <label id="ancillary-drop-zone" for="ancillary-files">
+        <input type="file" id="ancillary-files" accept=".pdf,.md,.markdown,.txt" multiple style="display:none" />
+        <span id="ancillary-file-hint">Choose file(s)…</span>
+      </label>
+      <div id="ancillary-file-list"></div>
+    </div>
 
     <div class="divider"></div>
 
@@ -2646,13 +2755,45 @@ async function delDeck(d) {
 // ══════════════════════════════════════════════════════
 //  STAGE 2 — Authority Codex banner + resolution
 // ══════════════════════════════════════════════════════
-let resolvedDeck = null; // memory record found for the current client
+let resolvedDeck = null;       // memory record found for the current client
+let authorityDeckFile = null;  // uploaded PDF (sent to the model directly) — takes priority over memory
 
 function resolvedDeckText() {
   const up = document.getElementById('deck-upload').value.trim();
   if (up) return up;
   if (resolvedDeck) return resolvedDeck.markdown || JSON.stringify(resolvedDeck.json || {});
   return '';
+}
+
+// Manual upload (file or paste) always wins over the Memory Bank match.
+function renderDeckBanner() {
+  const banner = document.getElementById('deck-banner');
+  const pasted = document.getElementById('deck-upload').value.trim();
+  if (authorityDeckFile) {
+    banner.className = 'found';
+    banner.innerHTML = `<span class="db-title">✓ Using uploaded file "${authorityDeckFile.name.replace(/</g,'&lt;')}"</span>This overrides the Memory Bank for this generation.`;
+    return;
+  }
+  if (pasted) {
+    banner.className = 'found';
+    banner.innerHTML = `<span class="db-title">✓ Using pasted Authority Codex</span>This overrides the Memory Bank for this generation.`;
+    return;
+  }
+  const name = document.getElementById('client-name').value.trim();
+  const email = document.getElementById('client-email').value.trim();
+  if (!name && !email) {
+    banner.className = 'missing';
+    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Codex, or upload one below.';
+    return;
+  }
+  if (resolvedDeck) {
+    const when = new Date(resolvedDeck.updatedAt).toLocaleDateString();
+    banner.className = 'found';
+    banner.innerHTML = `<span class="db-title">✓ Using ${(resolvedDeck.name || resolvedDeck.email).replace(/</g,'&lt;')}'s Authority Codex</span>Saved ${when}. It will be fed into the Podcast Strategy Guide as context.`;
+  } else {
+    banner.className = 'missing';
+    banner.innerHTML = `<span class="db-title">No saved Authority Codex for this client</span>Generate one in Stage 1, or upload/paste it below to use it now.`;
+  }
 }
 
 let deckLookupTimer = null;
@@ -2663,34 +2804,77 @@ function refreshDeckBanner() {
 async function doDeckLookup() {
   const name = document.getElementById('client-name').value.trim();
   const email = document.getElementById('client-email').value.trim();
-  const banner = document.getElementById('deck-banner');
-  const upload = document.getElementById('deck-upload');
   if (!name && !email) {
     resolvedDeck = null;
-    banner.className = 'missing';
-    banner.innerHTML = '<span class="db-title">Checking Memory Bank…</span>Enter the client\'s name or email to pull their saved Authority Codex.';
-    upload.style.display = 'none';
+    renderDeckBanner();
     return;
   }
   try {
     const q = new URLSearchParams({ email, name }).toString();
     const data = await (await fetch('/api/memory/find?' + q, { headers: authHeaders() })).json();
-    if (data.deck) {
-      resolvedDeck = data.deck;
-      const when = new Date(data.deck.updatedAt).toLocaleDateString();
-      banner.className = 'found';
-      banner.innerHTML = `<span class="db-title">✓ Using ${(data.deck.name || data.deck.email).replace(/</g,'&lt;')}'s Authority Codex</span>Saved ${when}. It will be fed into the Podcast Strategy Guide as context.`;
-      upload.style.display = 'none'; upload.value = '';
-    } else {
-      resolvedDeck = null;
-      banner.className = 'missing';
-      banner.innerHTML = `<span class="db-title">No saved Authority Codex for this client</span>Generate one in Stage 1, or paste it below to use it now.`;
-      upload.style.display = '';
-    }
+    resolvedDeck = data.deck || null;
+    renderDeckBanner();
   } catch (_) { /* leave banner as-is on transient error */ }
 }
 document.getElementById('client-name').addEventListener('input', refreshDeckBanner);
 document.getElementById('client-email').addEventListener('input', refreshDeckBanner);
+document.getElementById('deck-upload').addEventListener('input', renderDeckBanner);
+
+// ── Authority Codex file upload (.pdf sent to the model directly; .md/.txt read as text) ──
+document.getElementById('deck-file').addEventListener('change', function() {
+  const zone = document.getElementById('deck-drop-zone');
+  const label = document.getElementById('deck-file-name');
+  const textarea = document.getElementById('deck-upload');
+  const file = this.files[0];
+  if (!file) {
+    authorityDeckFile = null;
+    label.textContent = 'Choose file…';
+    zone.classList.remove('has-file');
+    renderDeckBanner();
+    return;
+  }
+  label.textContent = file.name;
+  zone.classList.add('has-file');
+  if (/\.pdf$/i.test(file.name)) {
+    authorityDeckFile = file;
+    textarea.value = '';
+  } else {
+    authorityDeckFile = null;
+    const reader = new FileReader();
+    reader.onload = () => { textarea.value = reader.result; renderDeckBanner(); };
+    reader.readAsText(file);
+  }
+  renderDeckBanner();
+});
+
+// ── Additional Reference Documents (multiple; any mix of PDFs and text sent as-is to the server) ──
+let ancillaryFiles = [];
+function renderAncillaryList() {
+  const list = document.getElementById('ancillary-file-list');
+  list.innerHTML = '';
+  ancillaryFiles.forEach((file, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'ancillary-chip';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = file.name;
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove';
+    removeBtn.addEventListener('click', () => {
+      ancillaryFiles.splice(i, 1);
+      renderAncillaryList();
+    });
+    chip.appendChild(nameSpan);
+    chip.appendChild(removeBtn);
+    list.appendChild(chip);
+  });
+}
+document.getElementById('ancillary-files').addEventListener('change', function() {
+  ancillaryFiles = ancillaryFiles.concat(Array.from(this.files));
+  this.value = ''; // allow re-selecting the same file, and let repeated picks add rather than replace
+  renderAncillaryList();
+});
 
 // ── Generate ───────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', async () => {
@@ -2718,6 +2902,8 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 
     const pdfFile = document.getElementById('figma-pdf').files[0];
     if (pdfFile) fd.append('figmaPdf', pdfFile);
+    if (authorityDeckFile) fd.append('authorityDeckPdf', authorityDeckFile);
+    ancillaryFiles.forEach(f => fd.append('ancillaryDocs', f));
 
     const res = await fetch('/api/generate', { method: 'POST', body: fd, headers: authHeaders() });
     checkAuth(res);

@@ -29,6 +29,7 @@ If an Authority Deck (from an earlier Strategy Call 1) is provided, treat it as 
 Extract offer stack, buyer signals, referral partner types, and disqualifiers
 directly from what the host said. Do not override their words with assumptions.
 If no transcript, derive everything from the structured inputs.
+You may also receive Additional Reference Documents beyond the Authority Codex and Figma PDF — these are supplementary client materials (e.g. brand guides, prior call notes, other codices) uploaded manually, not necessarily structured like the Authority Codex. Use them as supporting context alongside the transcript and Authority Codex, without letting them override what the host actually said on the call.
 
 You will be given a set of PER-TAB RULES below. Follow each tab's rules when
 producing that section of the output.
