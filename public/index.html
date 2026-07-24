@@ -2444,28 +2444,53 @@ document.getElementById('btn-extract').addEventListener('click', async () => {
   const btn = document.getElementById('btn-extract');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Extracting…';
   status.textContent = '';
-  try {
+
+  const body = JSON.stringify({
+    clientName: name, clientEmail: email,
+    package: selectedPackage(),
+    customDeliverables: customDeliverables(),
+    docTypeHint: '', // deck always combines both parts — no type to choose
+    location: document.getElementById('authority-location').value.trim(),
+    targetTimeline: document.getElementById('authority-timeline').value.trim(),
+    presentedDate: document.getElementById('authority-presented').value.trim(),
+    nextCall: document.getElementById('authority-nextcall').value.trim(),
+    transcript,
+  });
+
+  // One extract attempt. Returns the extraction, or null if the stream ended
+  // with no result and no server error (a dropped connection — retryable).
+  // A real server 'error' event throws (not retryable — it'll fail the same
+  // way every time).
+  async function attemptExtract() {
     const res = await fetch('/api/authority/extract', {
-      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        clientName: name, clientEmail: email,
-        package: selectedPackage(),
-        customDeliverables: customDeliverables(),
-        docTypeHint: '', // deck always combines both parts — no type to choose
-        location: document.getElementById('authority-location').value.trim(),
-        targetTimeline: document.getElementById('authority-timeline').value.trim(),
-        presentedDate: document.getElementById('authority-presented').value.trim(),
-        nextCall: document.getElementById('authority-nextcall').value.trim(),
-        transcript,
-      }),
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body,
     });
     checkAuth(res);
     let extraction = null;
-    await readSSEStream(res, (event, payload) => {
-      if (event === 'done') extraction = payload.extraction;
-      else if (event === 'error') throw new Error(payload.error);
-    });
-    if (!extraction) throw new Error('No extraction returned');
+    try {
+      await readSSEStream(res, (event, payload) => {
+        if (event === 'done') extraction = payload.extraction;
+        else if (event === 'error') { const se = new Error(payload.error); se.__serverError = true; throw se; }
+      });
+    } catch (e) {
+      if (e && e.__serverError) throw e;  // real server error — do not retry
+      return null;                        // network/stream drop — signal retry
+    }
+    return extraction;                    // null if stream ended without done — retryable
+  }
+
+  try {
+    let extraction = null;
+    for (let attempt = 1; attempt <= 2 && !extraction; attempt++) {
+      if (attempt === 2) status.textContent = 'Connection dropped — retrying extraction…';
+      try {
+        extraction = await attemptExtract();
+      } catch (serverErr) {
+        throw serverErr; // real server error — don't retry
+      }
+    }
+    if (!extraction) throw new Error('No extraction returned — the connection dropped twice. Please try Extract again.');
+    status.textContent = '';
     authorityExtraction = extraction;
     renderReview(extraction);
     gotoStep(2);
