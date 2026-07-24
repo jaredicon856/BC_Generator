@@ -136,6 +136,7 @@ This codex is being written in ${sliceCount} slices simultaneously and stitched 
 - Use the scaffold's section numbers exactly as given. If a CONDITIONAL section in your slice does not apply, omit it entirely WITHOUT renumbering — numbering is normalized after assembly.
 - Do not reference other sections by number, and do not summarize or preview content that belongs to another slice.
 - PLAIN MARKDOWN ONLY: never wrap your output in code fences (\`\`\`) and never use raw HTML tags like <div> — center the cover with plain markdown lines.
+- EVERY section heading MUST be a level-2 markdown heading starting with "## " (exactly two hash marks), e.g. "## SECTION 01   |   EXECUTIVE SUMMARY". Never write a section heading as plain text without the leading "## ".
 - No preamble, no commentary, no closing note: your output starts at your first heading and ends at the end of your last section.`;
 }
 
@@ -152,18 +153,29 @@ function cleanSlice(text) {
     .trim();
 }
 
-// After stitching, rewrite two-digit section numbers into one clean sequence
-// (fixes gaps left by omitted CONDITIONAL sections) and normalize every
-// section heading to the same "## " level (slices sometimes disagree on # vs
-// ##). Only touches heading lines like "## SECTION 12   |   TITLE" or
-// "## 04   TITLE"; PART dividers, pillar subheads ("### 1. ..."), and body
-// text are left alone.
+// After stitching, rewrite section numbers into one clean sequence (fixes
+// gaps from omitted CONDITIONAL sections AND resets caused by a slice that
+// restarted numbering) and normalize every section heading to "## ".
+// A heading is a line that, ignoring leading #'s, is either "SECTION NN ..."
+// or "NN | ..."/"NN  Title" — but a NUMBER-ONLY heading with NO leading # is
+// left alone (too ambiguous with body text); a "SECTION"-keyword heading is
+// caught even with no #, since a slice occasionally drops the ## (that bug
+// buried Executive Summary in the cover). PART dividers, pillar subheads
+// ("### 1. ..."), and prose are untouched.
 function renumberSections(markdown) {
   let n = 0;
-  return markdown.replace(
-    /^#{1,4}(\s*)((?:SECTION\s+)?)(\d{2})(\b.*)$/gm,
-    (_, sp, secWord, _num, rest) => `##${sp || ' '}${secWord}${String(++n).padStart(2, '0')}${rest}`
-  );
+  return markdown.split('\n').map((line) => {
+    // Section headings are level 1-2 (# / ##) or, from a slice that dropped
+    // its markers, plain "SECTION NN ...". Level-3+ headings (### 1. PILLAR)
+    // are subheads — the #{0,2} cap excludes them.
+    const m = line.match(/^(#{0,2})(\s*)(SECTION\s+)?(\d{1,2})(\b.*)$/);
+    if (!m) return line;
+    const [, hashes, sp, secWord, , rest] = m;
+    // Only a heading if it has #'s OR the explicit SECTION keyword.
+    if (!hashes && !secWord) return line;
+    n++;
+    return `##${sp || ' '}${secWord || ''}${String(n).padStart(2, '0')}${rest}`;
+  }).join('\n');
 }
 
 async function assembleDeck(confirmedJson, pkg, deliverables, onProgress) {
