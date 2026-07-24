@@ -434,7 +434,7 @@ You are the Codex writer. The user message contains the CONFIRMED facts JSON (na
 // battlecard/pitch need 16000: at 4000 a rich battlecard (ICP + heavy PDF)
 // overflowed the budget and the truncated JSON failed to parse in prod.
 const CALL_DEFAULTS = {
-  authority_extract:  { model: 'claude-sonnet-4-5', maxTokens: 4000 },
+  authority_extract:  { model: 'claude-sonnet-4-5', maxTokens: 8000 },
   authority_document: { model: 'claude-sonnet-4-5', maxTokens: 15000 },
   battlecard:         { model: 'claude-sonnet-4-5', maxTokens: 16000 },
   pitch:              { model: 'claude-sonnet-4-5', maxTokens: 16000 },
