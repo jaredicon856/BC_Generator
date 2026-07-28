@@ -154,6 +154,26 @@ app.post('/api/generate-pitch', async (req, res) => {
 // insensitive, "one"/"two" also accepted) so the handler knows which phase
 // to run. clientName is required explicitly -- we don't try to parse a
 // client name out of the title, too unreliable across naming conventions.
+// ── POST /api/simulate-call ─────────────────────────────
+// Manually trigger the full Strategy Call 1 package (Authority Codex +
+// Podcast Strategy Guide + voice recap -> Slack) without a Fathom webhook.
+// Gated by the normal APP_PASSWORD access code (this route is NOT exempt like
+// /webhook/fathom), so it needs no Fathom secret. Useful for testing the
+// pipeline and for manually re-running a client whose real webhook failed.
+app.post('/api/simulate-call', async (req, res) => {
+  const { clientName, clientKey, transcript, presentedDate } = req.body || {};
+  if (!clientName || !transcript) {
+    return res.status(400).json({ ok: false, error: 'clientName and transcript are required' });
+  }
+  const storeKey = normalizeKey(clientKey || clientName);
+  res.json({ ok: true, accepted: true, clientName, storeKey, note: 'Generating the full Call 1 package -> Slack. This takes a few minutes.' });
+  waitUntil(
+    processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId: null }).catch((err) => {
+      console.error('[simulate-call] Background processing failed:', err.message);
+    })
+  );
+});
+
 app.post('/api/webhook/fathom', async (req, res) => {
   const providedSecret = req.get('x-webhook-secret') || '';
   if (!process.env.FATHOM_WEBHOOK_SECRET || providedSecret !== process.env.FATHOM_WEBHOOK_SECRET) {
