@@ -17,6 +17,7 @@ const { waitUntil }                 = require('@vercel/functions');
 // Client Strategy Studio (Authority Codex extract/assemble + memory + prompts)
 const { extractDeck, assembleDeck } = require('./src/authorityDeck');
 const { markdownToPdf }             = require('./src/mdPdf');
+const { pushDocumentsToSalesApp }   = require('./src/salesApp');
 const prompts                       = require('./src/prompts');
 const memory                        = require('./src/memory');
 
@@ -293,6 +294,24 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
 
   const voiceBuffer = await voicePromise;
   console.log(`[webhook/fathom] Call 1 package for "${clientName}" (key: ${storeKey}): codex ${codexPdf.length}B, guide ${guidePdf.length}B, voice ${voiceBuffer ? voiceBuffer.length + 'B' : 'none'}, pitch ${pitch ? 'yes' : 'no'}`);
+
+  // Push the two PDFs to the ICON sales app to attach under the client profile
+  // (matched by email). Non-fatal; attaches to existing clients only.
+  try {
+    const salesRes = await pushDocumentsToSalesApp({
+      clientEmail: clientKey || '',
+      clientName,
+      documents: [
+        { type: 'authority_codex',         filename: `${clientName} - Authority Codex.pdf`,        bytes: codexPdf },
+        { type: 'podcast_strategy_guide',  filename: `${clientName} - Podcast Strategy Guide.pdf`, bytes: guidePdf },
+      ],
+    });
+    if (salesRes) {
+      console.log(`[sales-app] ${salesRes.attached ? `attached ${salesRes.stored?.length || 0} doc(s) to client ${salesRes.clientId}` : `not attached (${salesRes.reason})`}`);
+    }
+  } catch (salesErr) {
+    console.error('[sales-app] Document push failed:', salesErr.message);
+  }
 
   if (!channel) {
     console.warn('[webhook/fathom] No SLACK_CHANNEL_AUTHORITY_DECK / SLACK_CHANNEL_ID set -- package generated but not delivered anywhere.');
