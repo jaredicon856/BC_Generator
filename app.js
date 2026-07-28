@@ -188,9 +188,16 @@ app.post('/api/webhook/fathom', async (req, res) => {
   }
 
   const phase = detectCallPhase(meetingTitle);
-  if (phase === 'unknown') {
-    console.warn(`[webhook/fathom] Could not detect call phase from title: "${meetingTitle}" -- skipping`);
-    return res.json({ ok: true, skipped: true, reason: 'title did not match "Strategy Call 1/2" pattern' });
+  if (phase !== 1) {
+    // Strategy Call 1 now produces the FULL package (Authority Codex +
+    // Podcast Strategy Guide + voice recap), so Strategy Call 2 automation is
+    // retired. A "Part 2" meeting (phase 2) is acknowledged and skipped, as
+    // is any title that isn't an "ICON Podcast Strategy Call".
+    const reason = phase === 2
+      ? 'Strategy Call 2 automation retired -- the full package is delivered at Call 1'
+      : 'title did not match the "ICON Podcast Strategy Call" pattern';
+    console.log(`[webhook/fathom] Skipping "${meetingTitle}" (phase ${phase}): ${reason}`);
+    return res.json({ ok: true, skipped: true, reason });
   }
 
   // Respond to Zapier/Make right away -- Claude generation + PDF rendering
@@ -201,116 +208,92 @@ app.post('/api/webhook/fathom', async (req, res) => {
   // responding is NOT sufficient on Vercel -- the platform can freeze the
   // execution environment right after the response is sent otherwise, with
   // no error thrown. waitUntil is the actual supported mechanism for this.
-  res.json({ ok: true, accepted: true, phase, clientName, storeKey });
+  res.json({ ok: true, accepted: true, phase: 1, clientName, storeKey });
 
   waitUntil(
-    processFathomCall({ phase, clientName, clientKey, storeKey, transcript, presentedDate, recordingId }).catch((err) => {
+    processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId }).catch((err) => {
       console.error('[webhook/fathom] Background processing failed:', err.message);
     })
   );
 });
 
-async function processFathomCall({ phase, clientName, clientKey, storeKey, transcript, presentedDate, recordingId }) {
+// Strategy Call 1 -> the full client package, all delivered to one Slack
+// channel (authority_codex_delivery via SLACK_CHANNEL_AUTHORITY_DECK):
+//   1) Authority Codex (PDF)
+//   2) Podcast Strategy Guide / Battlecard (PDF) -- ICP list ALWAYS on, the
+//      referral pitch ALWAYS built, and the codex fed in as context
+//   3) Voice meeting summary (mp3)
+// Every delivery step is independently try/caught: one failure never blocks
+// the others.
+async function processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId }) {
   if (recordingId) await store.set(`processed:${recordingId}`, true);
 
-  if (phase === 1) {
-    const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
-    await store.set(`authorityDeck:${storeKey}`, authorityDeck);
+  const channel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
 
-    // Bridge: also save to the Studio's Memory Bank so a webhook-generated
-    // deck shows up in the UI and Stage 2's client lookup. Non-fatal.
-    try {
-      await memory.save({
-        email:   clientKey || '',
-        name:    clientName,
-        docType: 'authority_deck',
-        package: '',
-        json:    authorityDeck,
-        markdown: '',
-      });
-    } catch (memErr) {
-      console.warn('[webhook/fathom] Could not save deck to Studio Memory Bank:', memErr.message);
-    }
-    const pdfBytes = await generateAuthorityDeckPDF(authorityDeck);
-    console.log(`[webhook/fathom] Phase 1 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes`);
+  // The voice recap only needs the transcript -- start it now, concurrently
+  // with the (slower) document generation.
+  const voicePromise = generateVoiceSummary(transcript).catch((err) => {
+    console.error('[webhook/fathom] Voice summary failed:', err.message);
+    return null;
+  });
 
-    const authorityChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
-    if (authorityChannel) {
-      try {
-        await slack.uploadFile(
-          authorityChannel,
-          Buffer.from(pdfBytes),
-          `${clientName} - Authority Codex.pdf`,
-          `<!channel> :page_facing_up: *Phase 1 complete* -- Authority Codex ready for *${clientName}* (key: ${storeKey})`
-        );
-      } catch (slackErr) {
-        console.error('[webhook/fathom] Slack Authority Deck upload failed:', slackErr.message);
-      }
+  // 1) Authority Codex ------------------------------------------------------
+  const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
+  await store.set(`authorityDeck:${storeKey}`, authorityDeck);
+  try {
+    await memory.save({ email: clientKey || '', name: clientName, docType: 'authority_deck', package: '', json: authorityDeck, markdown: '' });
+  } catch (memErr) {
+    console.warn('[webhook/fathom] Could not save codex to Studio Memory Bank:', memErr.message);
+  }
+  const codexPdf = await generateAuthorityDeckPDF(authorityDeck);
 
-      try {
-        const voiceBuffer = await generateVoiceSummary(transcript);
-        await slack.uploadFile(
-          authorityChannel,
-          voiceBuffer,
-          `${clientName} - Call 1 Recap.mp3`,
-          `<!channel> :studio_microphone: *Phase 1* -- Call 1 recap for *${clientName}*`
-        );
-      } catch (voiceErr) {
-        console.error('[webhook/fathom] Voice summary (Call 1) failed:', voiceErr.message);
-      }
-    } else {
-      console.warn('[webhook/fathom] No SLACK_CHANNEL_AUTHORITY_DECK / SLACK_CHANNEL_ID set -- Authority Deck generated but not delivered anywhere.');
-    }
+  // 2) Podcast Strategy Guide (battlecard) ----------------------------------
+  // ICP list is forced on for the automated flow, and the codex is passed as
+  // authoritative context (same continuity the retired Call 2 used to give).
+  const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck, icpListNeeded: true });
+
+  // 3) Referral pitch -- always built (AI Brain mode), from the battlecard.
+  // Folded into the guide PDF. Non-fatal: a failed pitch just omits it.
+  let pitch = null;
+  try {
+    pitch = await generatePitch({
+      pitchMode: 'ai',
+      hostName: clientName,
+      podcastName: battlecard.meta?.podcastName || '',
+      niche:      battlecard.meta?.niche || '',
+      geography:  battlecard.meta?.geography || 'North America',
+      offerStack: battlecard.offerStack || [],
+      irpList:    battlecard.irpList || {},
+      idealClientDescription: '',
+    });
+  } catch (pitchErr) {
+    console.warn('[webhook/fathom] Referral pitch failed, guide will omit it:', pitchErr.message);
+  }
+  const guidePdf = await generatePDF(battlecard, {}, pitch);
+
+  const voiceBuffer = await voicePromise;
+  console.log(`[webhook/fathom] Call 1 package for "${clientName}" (key: ${storeKey}): codex ${codexPdf.length}B, guide ${guidePdf.length}B, voice ${voiceBuffer ? voiceBuffer.length + 'B' : 'none'}, pitch ${pitch ? 'yes' : 'no'}`);
+
+  if (!channel) {
+    console.warn('[webhook/fathom] No SLACK_CHANNEL_AUTHORITY_DECK / SLACK_CHANNEL_ID set -- package generated but not delivered anywhere.');
     return;
   }
 
-  // phase === 2
-  const authorityDeck = await store.get(`authorityDeck:${storeKey}`);
-  const battlecardChannel = process.env.SLACK_CHANNEL_BATTLECARD || process.env.SLACK_CHANNEL_ID;
+  try {
+    await slack.uploadFile(channel, Buffer.from(codexPdf), `${clientName} - Authority Codex.pdf`,
+      `<!channel> :page_facing_up: *Strategy Call 1 complete* -- Authority Codex for *${clientName}*`);
+  } catch (e) { console.error('[webhook/fathom] Slack codex upload failed:', e.message); }
 
-  if (!authorityDeck) {
-    console.error(`[webhook/fathom] No stored Authority Deck for key "${storeKey}" (clientName: "${clientName}") -- Call 2 fired before Call 1 completed, or the clientKey/clientName didn't match between calls.`);
-    if (battlecardChannel) {
-      try {
-        await slack.postMessage(
-          battlecardChannel,
-          `<!channel> :warning: *Phase 2* -- Generating the Battlecard for *${clientName}* with no stored Authority Codex found -- Call 1 may not have completed, or the client key didn't match between calls. Proceeding anyway, but double-check this one.`
-        );
-      } catch (slackErr) {
-        console.error('[webhook/fathom] Slack alert (missing Authority Deck) failed:', slackErr.message);
-      }
-    }
-  }
+  try {
+    await slack.uploadFile(channel, Buffer.from(guidePdf), `${clientName} - Podcast Strategy Guide.pdf`,
+      `:dart: *Podcast Strategy Guide* for *${clientName}* -- ICP list + referral pitch included`);
+  } catch (e) { console.error('[webhook/fathom] Slack guide upload failed:', e.message); }
 
-  const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck });
-  const pdfBytes = await generatePDF(battlecard);
-  console.log(`[webhook/fathom] Phase 2 complete for "${clientName}" (key: ${storeKey}), PDF ${pdfBytes.length} bytes, missingAuthorityDeck=${!authorityDeck}`);
-
-  if (battlecardChannel) {
+  if (voiceBuffer) {
     try {
-      await slack.uploadFile(
-        battlecardChannel,
-        Buffer.from(pdfBytes),
-        `${clientName} - Battlecard.pdf`,
-        `<!channel> :dart: *Phase 2 complete* -- Battlecard ready for *${clientName}* (key: ${storeKey})`
-      );
-    } catch (slackErr) {
-      console.error('[webhook/fathom] Slack Battlecard upload failed:', slackErr.message);
-    }
-
-    try {
-      const voiceBuffer = await generateVoiceSummary(transcript);
-      await slack.uploadFile(
-        battlecardChannel,
-        voiceBuffer,
-        `${clientName} - Call 2 Recap.mp3`,
-        `<!channel> :studio_microphone: *Phase 2* -- Call 2 recap for *${clientName}*`
-      );
-    } catch (voiceErr) {
-      console.error('[webhook/fathom] Voice summary (Call 2) failed:', voiceErr.message);
-    }
-  } else {
-    console.warn('[webhook/fathom] No SLACK_CHANNEL_BATTLECARD / SLACK_CHANNEL_ID set -- Battlecard generated but not delivered anywhere.');
+      await slack.uploadFile(channel, voiceBuffer, `${clientName} - Call 1 Recap.mp3`,
+        `:studio_microphone: *Call 1 voice recap* for *${clientName}*`);
+    } catch (e) { console.error('[webhook/fathom] Slack voice upload failed:', e.message); }
   }
 }
 
