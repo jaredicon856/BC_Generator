@@ -100,12 +100,17 @@ async function allKeys() {
 }
 
 // ── Save (create or update) ────────────────────────────
-async function save({ email, name, docType, package: pkg, json, markdown }) {
+// Stores the codex (json/markdown) plus the inputs needed to REGENERATE it
+// later: the source transcript, the package, and (for custom) the
+// deliverables. Fields not passed are preserved from the existing record, so a
+// codex-only save never wipes an attached guide/transcript.
+async function save({ email, name, docType, package: pkg, json, markdown, transcript, battlecard, customDeliverables }) {
   const key = keyFor(email, name);
   if (!key) throw new Error('A client email or name is required to save a deck');
 
   const now      = new Date().toISOString();
   const existing = await readRecord(key);
+  const keep = (v, prev) => (v !== undefined && v !== null ? v : (existing ? prev : undefined));
 
   const record = {
     key,
@@ -115,6 +120,9 @@ async function save({ email, name, docType, package: pkg, json, markdown }) {
     package:   pkg || (existing && existing.package) || '',
     json:      json || null,
     markdown:  markdown || '',
+    transcript:         keep(transcript, existing && existing.transcript) || '',
+    battlecard:         keep(battlecard, existing && existing.battlecard) || null,
+    customDeliverables: keep(customDeliverables, existing && existing.customDeliverables) || '',
     createdAt: existing ? existing.createdAt : now,
     updatedAt: now,
     versions:  existing ? (existing.versions || []) : [],
@@ -132,6 +140,16 @@ async function save({ email, name, docType, package: pkg, json, markdown }) {
   return record;
 }
 
+// Merge fields into an existing record (no version archiving). Used to attach
+// the Strategy Guide after the codex is already saved.
+async function update(key, patch) {
+  const existing = await readRecord(key);
+  if (!existing) return null;
+  const record = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+  await writeRecord(key, record);
+  return record;
+}
+
 // ── Read helpers ───────────────────────────────────────
 function summarize(r) {
   return {
@@ -140,6 +158,9 @@ function summarize(r) {
     name:      r.name,
     docType:   r.docType,
     package:   r.package || '',
+    hasCodex:      !!(r.json || r.markdown),
+    hasGuide:      !!r.battlecard,
+    hasTranscript: !!r.transcript,
     updatedAt: r.updatedAt,
     createdAt: r.createdAt,
     versionCount: (r.versions || []).length,
@@ -192,4 +213,4 @@ async function remove(key) {
   try { fs.unlinkSync(fileFor(key)); return true; } catch (_) { return false; }
 }
 
-module.exports = { save, list, get, findByClient, remove, keyFor };
+module.exports = { save, update, list, get, findByClient, remove, keyFor };

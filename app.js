@@ -292,7 +292,13 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
 
   await store.set(`authorityDeck:${storeKey}`, authorityDeck);
   try {
-    await memory.save({ email: clientKey || '', name: clientName, docType: 'authority_deck', package: codexPackage, json: codexJson, markdown: codexMarkdown });
+    // Store the transcript + package + deliverables alongside the codex so the
+    // Memory Bank can regenerate this client later with the same inputs.
+    await memory.save({
+      email: clientKey || '', name: clientName, docType: 'authority_deck',
+      package: codexPackage, json: codexJson, markdown: codexMarkdown,
+      transcript, customDeliverables: customDeliverables || '',
+    });
   } catch (memErr) {
     console.warn('[webhook/fathom] Could not save codex to Studio Memory Bank:', memErr.message);
   }
@@ -301,6 +307,14 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
   // ICP list is forced on for the automated flow, and the codex is passed as
   // authoritative context (same continuity the retired Call 2 used to give).
   const battlecard = await generateBattlecard({ clientName, transcript, authorityDeck, icpListNeeded: true });
+
+  // Attach the Strategy Guide (battlecard) to the client's Memory Bank record.
+  try {
+    const memKey = memory.keyFor(clientKey || '', clientName);
+    if (memKey) await memory.update(memKey, { battlecard });
+  } catch (guideErr) {
+    console.warn('[webhook/fathom] Could not attach guide to Memory Bank:', guideErr.message);
+  }
 
   // 3) Referral pitch -- always built (AI Brain mode), from the battlecard.
   // Folded into the guide PDF. Non-fatal: a failed pitch just omits it.
@@ -582,6 +596,36 @@ app.delete('/api/memory/:key', async (req, res) => {
     res.json({ ok: await memory.remove(req.params.key) });
   } catch (err) {
     console.error('[DELETE /api/memory/:key]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/memory/:key/regenerate ───────────────────
+// Re-run the full Call 1 package for a saved client using the stored
+// transcript + package + deliverables, delivering to Slack + the sales app +
+// the Memory Bank. The manual "regenerate if there's an issue" path.
+app.post('/api/memory/:key/regenerate', async (req, res) => {
+  try {
+    const rec = await memory.get(req.params.key);
+    if (!rec) return res.status(404).json({ ok: false, error: 'Client not found in Memory Bank' });
+    if (!rec.transcript) {
+      return res.status(400).json({ ok: false, error: 'No transcript stored for this client (generated before transcripts were saved) — cannot auto-regenerate.' });
+    }
+    res.json({ ok: true, accepted: true, name: rec.name, note: 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
+    waitUntil(
+      processFathomCall({
+        clientName:        rec.name,
+        clientKey:         rec.email || '',
+        storeKey:          normalizeKey(rec.email || rec.name),
+        transcript:        rec.transcript,
+        presentedDate:     (rec.json && rec.json.meta && rec.json.meta.presentedDate) || '',
+        recordingId:       null,
+        packageOverride:   rec.package || undefined,
+        customDeliverables: rec.customDeliverables || '',
+      }).catch((err) => console.error('[memory/regenerate] Background processing failed:', err.message))
+    );
+  } catch (err) {
+    console.error('[memory/regenerate]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -1480,6 +1480,10 @@
   .memory-card .mc-main { flex: 1; }
   .memory-card .mc-name { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
   .memory-card .mc-meta { font-size: 12px; color: var(--brand-muted); margin-top: 3px; }
+  .memory-card .mc-status { font-size: 12px; color: var(--brand-accent); margin-top: 5px; }
+  .memory-card .mc-status:empty { display: none; }
+  .memory-card .mc-status.mc-status-err { color: #c62828; }
+  .mc-btn[disabled] { opacity: .45; cursor: not-allowed; }
   .memory-card .mc-badge {
     font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
     color: var(--brand-accent-mid, #b9902f); background: #faf3e2; border-radius: 4px; padding: 3px 8px;
@@ -2741,18 +2745,30 @@ async function loadMemory() {
       // Display name: the deliverable is branded "Authority Codex" (stored
       // docType stays 'authority_deck' for backward compatibility).
       const dt = d.docType === 'authority_deck' ? 'authority codex' : (d.docType || '').replace(/_/g, ' ');
+      const badges = [
+        dt ? `<span class="mc-badge">${dt}</span>` : '',
+        d.package ? `<span class="mc-badge">${d.package}</span>` : '',
+        d.hasGuide ? `<span class="mc-badge">+ strategy guide</span>` : '',
+      ].join('');
       card.innerHTML = `
         <div class="mc-main">
           <div class="mc-name">${(d.name || d.email || d.key).replace(/</g,'&lt;')}</div>
           <div class="mc-meta">${d.email ? d.email.replace(/</g,'&lt;') + ' · ' : ''}${when}${d.versionCount ? ' · ' + d.versionCount + ' prior version(s)' : ''}</div>
+          <div class="mc-status" data-role="status"></div>
         </div>
-        ${dt ? `<span class="mc-badge">${dt}</span>` : ''}
+        ${badges}
         <button class="mc-btn" data-act="view">View</button>
+        ${d.hasGuide ? '<button class="mc-btn" data-act="guide">Guide PDF</button>' : ''}
         <button class="mc-btn" data-act="use">Use in Stage 2</button>
+        <button class="mc-btn" data-act="regen"${d.hasTranscript ? '' : ' disabled title="No transcript stored — cannot auto-regenerate"'}>Regenerate</button>
         <button class="mc-btn danger" data-act="del">Delete</button>`;
       card.querySelector('[data-act="view"]').addEventListener('click', () => viewDeck(d.key));
       card.querySelector('[data-act="use"]').addEventListener('click', () => useDeck(d));
       card.querySelector('[data-act="del"]').addEventListener('click', () => delDeck(d));
+      const guideBtn = card.querySelector('[data-act="guide"]');
+      if (guideBtn) guideBtn.addEventListener('click', () => downloadGuide(d.key, d.name));
+      const regenBtn = card.querySelector('[data-act="regen"]');
+      if (regenBtn && d.hasTranscript) regenBtn.addEventListener('click', () => regenDeck(d, card));
       list.appendChild(card);
     });
   } catch (err) {
@@ -2775,6 +2791,45 @@ async function delDeck(d) {
   if (!confirm('Delete the saved Authority Codex for "' + (d.name || d.email) + '"? This cannot be undone.')) return;
   await fetch('/api/memory/' + d.key, { method: 'DELETE', headers: authHeaders() });
   loadMemory();
+}
+// Download the stored Strategy Guide as a PDF (renders the battlecard server-side).
+async function downloadGuide(key, name) {
+  try {
+    const rec = await (await fetch('/api/memory/' + key, { headers: authHeaders() })).json();
+    const battlecard = rec.deck && rec.deck.battlecard;
+    if (!battlecard) { alert('No strategy guide stored for this client.'); return; }
+    const res = await fetch('/api/export-pdf', {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ battlecard }),
+    });
+    checkAuth(res);
+    if (!res.ok) throw new Error('Export failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = ((name || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '-podcast-strategy-guide.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) { alert('Could not download guide: ' + err.message); }
+}
+// Regenerate the full package for a saved client (codex + guide + voice) →
+// Slack + sales app + Memory Bank, using the stored transcript + package.
+async function regenDeck(d, card) {
+  if (!confirm('Regenerate the Authority Codex + Strategy Guide for "' + (d.name || d.email) + '"?\n\nThis re-runs generation with the stored transcript and package, posts to the Slack delivery channel, attaches to the client’s sales profile, and updates the Memory Bank. Takes a few minutes.')) return;
+  const status = card.querySelector('[data-role="status"]');
+  const btn = card.querySelector('[data-act="regen"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Regenerating…'; }
+  if (status) status.textContent = 'Regeneration started — this runs in the background (~3–6 min) and posts to Slack when done.';
+  try {
+    const res = await fetch('/api/memory/' + d.key + '/regenerate', { method: 'POST', headers: authHeaders() });
+    checkAuth(res);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to start');
+  } catch (err) {
+    if (status) { status.textContent = 'Could not start: ' + err.message; status.classList.add('mc-status-err'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
+  }
 }
 
 // ══════════════════════════════════════════════════════
