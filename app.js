@@ -608,20 +608,29 @@ app.post('/api/memory/:key/regenerate', async (req, res) => {
   try {
     const rec = await memory.get(req.params.key);
     if (!rec) return res.status(404).json({ ok: false, error: 'Client not found in Memory Bank' });
-    if (!rec.transcript) {
-      return res.status(400).json({ ok: false, error: 'No transcript stored for this client (generated before transcripts were saved) — cannot auto-regenerate.' });
+
+    const body = req.body || {};
+    // Overrides from the request win; otherwise fall back to what's stored.
+    const transcript = (typeof body.transcript === 'string' && body.transcript.trim())
+      ? body.transcript.trim()
+      : (rec.transcript || '');
+    if (!transcript) {
+      return res.status(400).json({ ok: false, error: 'No transcript available — paste the call transcript to regenerate this one (it predates transcript storage).' });
     }
-    res.json({ ok: true, accepted: true, name: rec.name, note: 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
+    const packageOverride    = body.package || rec.package || undefined;
+    const customDeliverables = (typeof body.customDeliverables === 'string' ? body.customDeliverables : rec.customDeliverables) || '';
+
+    res.json({ ok: true, accepted: true, name: rec.name, package: packageOverride || null, note: 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
     waitUntil(
       processFathomCall({
         clientName:        rec.name,
         clientKey:         rec.email || '',
         storeKey:          normalizeKey(rec.email || rec.name),
-        transcript:        rec.transcript,
+        transcript,
         presentedDate:     (rec.json && rec.json.meta && rec.json.meta.presentedDate) || '',
         recordingId:       null,
-        packageOverride:   rec.package || undefined,
-        customDeliverables: rec.customDeliverables || '',
+        packageOverride,
+        customDeliverables,
       }).catch((err) => console.error('[memory/regenerate] Background processing failed:', err.message))
     );
   } catch (err) {

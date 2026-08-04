@@ -1484,6 +1484,13 @@
   .memory-card .mc-status:empty { display: none; }
   .memory-card .mc-status.mc-status-err { color: #c62828; }
   .mc-btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .mc-regen { max-width: 820px; margin: -6px 0 4px; padding: 14px 16px; border: 1px solid var(--brand-accent); border-radius: 10px; background: rgba(0,0,0,.02); display: flex; flex-direction: column; gap: 10px; }
+  .mc-regen label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--brand-muted); }
+  .mc-regen-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .mc-regen-row label { flex: 1; min-width: 220px; }
+  .mc-regen select, .mc-regen input, .mc-regen textarea { font: inherit; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--brand-ink, #041A1C); padding: 7px 9px; border: 1px solid var(--brand-border, #ddd); border-radius: 7px; background: #fff; }
+  .mc-regen textarea { resize: vertical; }
+  .mc-regen-actions { display: flex; align-items: center; gap: 10px; }
   .memory-card .mc-badge {
     font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
     color: var(--brand-accent-mid, #b9902f); background: #faf3e2; border-radius: 4px; padding: 3px 8px;
@@ -2760,15 +2767,14 @@ async function loadMemory() {
         <button class="mc-btn" data-act="view">View</button>
         ${d.hasGuide ? '<button class="mc-btn" data-act="guide">Guide PDF</button>' : ''}
         <button class="mc-btn" data-act="use">Use in Stage 2</button>
-        <button class="mc-btn" data-act="regen"${d.hasTranscript ? '' : ' disabled title="No transcript stored — cannot auto-regenerate"'}>Regenerate</button>
+        <button class="mc-btn" data-act="regen">Regenerate…</button>
         <button class="mc-btn danger" data-act="del">Delete</button>`;
       card.querySelector('[data-act="view"]').addEventListener('click', () => viewDeck(d.key));
       card.querySelector('[data-act="use"]').addEventListener('click', () => useDeck(d));
       card.querySelector('[data-act="del"]').addEventListener('click', () => delDeck(d));
       const guideBtn = card.querySelector('[data-act="guide"]');
       if (guideBtn) guideBtn.addEventListener('click', () => downloadGuide(d.key, d.name));
-      const regenBtn = card.querySelector('[data-act="regen"]');
-      if (regenBtn && d.hasTranscript) regenBtn.addEventListener('click', () => regenDeck(d, card));
+      card.querySelector('[data-act="regen"]').addEventListener('click', () => toggleRegenForm(d, card));
       list.appendChild(card);
     });
   } catch (err) {
@@ -2814,22 +2820,75 @@ async function downloadGuide(key, name) {
   } catch (err) { alert('Could not download guide: ' + err.message); }
 }
 // Regenerate the full package for a saved client (codex + guide + voice) →
-// Slack + sales app + Memory Bank, using the stored transcript + package.
-async function regenDeck(d, card) {
-  if (!confirm('Regenerate the Authority Codex + Strategy Guide for "' + (d.name || d.email) + '"?\n\nThis re-runs generation with the stored transcript and package, posts to the Slack delivery channel, attaches to the client’s sales profile, and updates the Memory Bank. Takes a few minutes.')) return;
-  const status = card.querySelector('[data-role="status"]');
-  const btn = card.querySelector('[data-act="regen"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Regenerating…'; }
-  if (status) status.textContent = 'Regeneration started — this runs in the background (~3–6 min) and posts to Slack when done.';
-  try {
-    const res = await fetch('/api/memory/' + d.key + '/regenerate', { method: 'POST', headers: authHeaders() });
-    checkAuth(res);
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Failed to start');
-  } catch (err) {
-    if (status) { status.textContent = 'Could not start: ' + err.message; status.classList.add('mc-status-err'); }
-    if (btn) { btn.disabled = false; btn.textContent = 'Regenerate'; }
-  }
+// Slack + sales app + Memory Bank. Opens a small form to CHOOSE the package
+// (and, for old rows with no stored transcript, paste one).
+const PKG_OPTS = [
+  { id: '',            label: 'Auto (look up from sales app)' },
+  { id: 'accelerator', label: 'Accelerator (Book + Podcast + Press + Stage)' },
+  { id: 'ecosystem',   label: 'Ecosystem (+ Community)' },
+  { id: 'podcast',     label: 'Podcast only' },
+  { id: 'custom',      label: 'Custom (choose deliverables)' },
+];
+function toggleRegenForm(d, card) {
+  const existing = card.nextElementSibling;
+  if (existing && existing.classList.contains('mc-regen')) { existing.remove(); return; }
+
+  const panel = document.createElement('div');
+  panel.className = 'mc-regen';
+  const stored = d.package || '';
+  panel.innerHTML = `
+    <div class="mc-regen-row">
+      <label>Package
+        <select data-f="pkg">${PKG_OPTS.map(o => `<option value="${o.id}"${o.id === stored ? ' selected' : ''}>${o.label}</option>`).join('')}</select>
+      </label>
+      <label data-f="delwrap" style="${stored === 'custom' ? '' : 'display:none'}">Custom deliverables
+        <input data-f="del" placeholder="e.g. Podcast, Book, Press" />
+      </label>
+    </div>
+    <label class="mc-regen-tx" data-f="txwrap" style="${d.hasTranscript ? 'display:none' : ''}">Transcript ${d.hasTranscript ? '(stored — leave blank to reuse)' : '(required — none stored for this one)'}
+      <textarea data-f="tx" rows="4" placeholder="Paste the Fathom call transcript / AI summary"></textarea>
+    </label>
+    <div class="mc-regen-actions">
+      <button class="mc-btn" data-f="run">Run regeneration</button>
+      <button class="mc-btn" data-f="cancel">Cancel</button>
+      <span class="mc-status" data-f="status"></span>
+    </div>`;
+  card.after(panel);
+
+  const pkgSel = panel.querySelector('[data-f="pkg"]');
+  const delWrap = panel.querySelector('[data-f="delwrap"]');
+  const txWrap = panel.querySelector('[data-f="txwrap"]');
+  pkgSel.addEventListener('change', () => {
+    delWrap.style.display = pkgSel.value === 'custom' ? '' : 'none';
+    // Custom without stored deliverables generally needs the transcript to infer — keep tx visible if not stored.
+    if (!d.hasTranscript) txWrap.style.display = '';
+  });
+  panel.querySelector('[data-f="cancel"]').addEventListener('click', () => panel.remove());
+  panel.querySelector('[data-f="run"]').addEventListener('click', async () => {
+    const status = panel.querySelector('[data-f="status"]');
+    const runBtn = panel.querySelector('[data-f="run"]');
+    const pkg = pkgSel.value;
+    const customDeliverables = panel.querySelector('[data-f="del"]').value.trim();
+    const tx = panel.querySelector('[data-f="tx"]').value.trim();
+    if (!d.hasTranscript && !tx) { status.textContent = 'Paste the transcript first.'; status.classList.add('mc-status-err'); return; }
+    if (!confirm('Regenerate "' + (d.name || d.email) + '"' + (pkg ? ' as ' + pkg : '') + '?\nPosts to Slack + the sales profile + Memory Bank. Takes a few minutes.')) return;
+    runBtn.disabled = true; runBtn.textContent = 'Starting…';
+    status.classList.remove('mc-status-err');
+    try {
+      const res = await fetch('/api/memory/' + d.key + '/regenerate', {
+        method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ package: pkg, customDeliverables, transcript: tx || undefined }),
+      });
+      checkAuth(res);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Failed to start');
+      status.textContent = 'Regeneration started (~3–6 min). It posts to Slack + the sales profile and refreshes here when done.';
+      runBtn.textContent = 'Running…';
+    } catch (err) {
+      status.textContent = 'Could not start: ' + err.message; status.classList.add('mc-status-err');
+      runBtn.disabled = false; runBtn.textContent = 'Run regeneration';
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════
