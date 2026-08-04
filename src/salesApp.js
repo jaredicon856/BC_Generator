@@ -48,4 +48,16 @@ async function pushDocumentsToSalesApp({ clientEmail, clientName, documents }) {
   return data; // { ok, attached, clientId?, stored?, reason? }
 }
 
-module.exports = { pushDocumentsToSalesApp };
+// Look up a client's package (ecosystem|accelerator|podcast|custom) from the
+// sales app by email, so the codex can be scoped to what they bought. Returns
+// the package id, or null if not configured / no matching client / no package.
+async function fetchClientPackage(clientEmail) {
+  if (!SALES_APP_URL || !BC_INGEST_SECRET || !clientEmail) return null;
+  const url = `${SALES_APP_URL}/api/ingest/client-package?email=${encodeURIComponent(clientEmail)}`;
+  const res = await fetch(url, { headers: { authorization: `Bearer ${BC_INGEST_SECRET}` } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.found) return null;
+  return data.packageId || null;
+}
+
+module.exports = { pushDocumentsToSalesApp, fetchClientPackage };

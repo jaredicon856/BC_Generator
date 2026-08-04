@@ -17,7 +17,7 @@ const { waitUntil }                 = require('@vercel/functions');
 // Client Strategy Studio (Authority Codex extract/assemble + memory + prompts)
 const { extractDeck, assembleDeck } = require('./src/authorityDeck');
 const { markdownToPdf }             = require('./src/mdPdf');
-const { pushDocumentsToSalesApp }   = require('./src/salesApp');
+const { pushDocumentsToSalesApp, fetchClientPackage } = require('./src/salesApp');
 const prompts                       = require('./src/prompts');
 const memory                        = require('./src/memory');
 
@@ -259,14 +259,41 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
   });
 
   // 1) Authority Codex ------------------------------------------------------
-  const authorityDeck = await generateAuthorityDeck({ clientName, transcript, presentedDate });
+  // Scope the codex to the client's PACKAGE (looked up from the sales app) so
+  // Accelerator/Ecosystem clients get the Book/Stage/Community sections. When
+  // the package is known, use the package-scoped Studio generator (extract →
+  // assemble → PDF). When it can't be determined, fall back to the original
+  // podcast-funnel generator so there's no regression.
+  let pkg = null;
+  try { pkg = await fetchClientPackage(clientKey); }
+  catch (e) { console.warn('[webhook/fathom] Package lookup failed:', e.message); }
+  const VALID_PACKAGES = ['ecosystem', 'accelerator', 'podcast', 'custom'];
+
+  let codexPdf, authorityDeck, codexJson, codexMarkdown, codexPackage;
+  if (VALID_PACKAGES.includes(pkg)) {
+    const extraction = await extractDeck({ clientName, clientEmail: clientKey || '', presentedDate, transcript, package: pkg });
+    codexMarkdown = await assembleDeck(extraction, pkg, '');
+    codexPdf      = await markdownToPdf(codexMarkdown);
+    authorityDeck = codexMarkdown;   // battlecard context (markdown)
+    codexJson     = extraction;
+    codexPackage  = pkg;
+    console.log(`[webhook/fathom] Codex via package-scoped Studio generator (package=${pkg})`);
+  } else {
+    const deck    = await generateAuthorityDeck({ clientName, transcript, presentedDate });
+    codexPdf      = await generateAuthorityDeckPDF(deck);
+    authorityDeck = deck;            // battlecard context (object)
+    codexJson     = deck;
+    codexMarkdown = '';
+    codexPackage  = '';
+    console.log(`[webhook/fathom] Codex via fallback podcast-funnel generator (package=${pkg || 'unknown'})`);
+  }
+
   await store.set(`authorityDeck:${storeKey}`, authorityDeck);
   try {
-    await memory.save({ email: clientKey || '', name: clientName, docType: 'authority_deck', package: '', json: authorityDeck, markdown: '' });
+    await memory.save({ email: clientKey || '', name: clientName, docType: 'authority_deck', package: codexPackage, json: codexJson, markdown: codexMarkdown });
   } catch (memErr) {
     console.warn('[webhook/fathom] Could not save codex to Studio Memory Bank:', memErr.message);
   }
-  const codexPdf = await generateAuthorityDeckPDF(authorityDeck);
 
   // 2) Podcast Strategy Guide (battlecard) ----------------------------------
   // ICP list is forced on for the automated flow, and the codex is passed as
