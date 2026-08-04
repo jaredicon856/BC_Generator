@@ -10,7 +10,10 @@ const BC_INGEST_SECRET = process.env.BC_INGEST_SECRET || '';
 
 // documents: [{ type: 'authority_codex' | 'podcast_strategy_guide',
 //               filename, bytes: Buffer|Uint8Array, mimeType? }]
-async function pushDocumentsToSalesApp({ clientEmail, clientName, documents }) {
+// packageId (optional): the package this codex was generated for
+// (ecosystem|accelerator|podcast|custom) — the sales app applies it to the
+// client when their package is still unknown, so Iris becomes package-aware.
+async function pushDocumentsToSalesApp({ clientEmail, clientName, documents, packageId }) {
   if (!SALES_APP_URL || !BC_INGEST_SECRET) {
     console.warn('[salesApp] SALES_APP_URL / BC_INGEST_SECRET not set — skipping sales-app push.');
     return null;
@@ -24,6 +27,7 @@ async function pushDocumentsToSalesApp({ clientEmail, clientName, documents }) {
   const payload = {
     clientEmail,
     clientName: clientName || '',
+    packageId: packageId || undefined,
     documents: (documents || []).map((d) => ({
       type: d.type,
       filename: d.filename,

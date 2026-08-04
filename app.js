@@ -344,6 +344,7 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
     const salesRes = await pushDocumentsToSalesApp({
       clientEmail: clientKey || '',
       clientName,
+      packageId: codexPackage || undefined,   // tell the sales app which package this codex is for
       documents: [
         { type: 'authority_codex',         filename: `${clientName} - Authority Codex.pdf`,        bytes: codexPdf },
         { type: 'podcast_strategy_guide',  filename: `${clientName} - Podcast Strategy Guide.pdf`, bytes: guidePdf },
@@ -519,26 +520,39 @@ app.post('/api/authority/generate', async (req, res) => {
       }
     }
 
+    // Render the codex PDF once, reused for Slack + the sales-app push.
+    let codexPdf = null;
+    try { codexPdf = Buffer.from(await markdownToPdf(markdown)); }
+    catch (pdfErr) { console.warn('[/api/authority/generate] PDF render failed:', pdfErr.message); }
+
     // Bridge: announce Studio-generated codexes in Slack, same channel and
-    // style as the webhook pipeline. Attach a rendered PDF; fall back to the
-    // raw markdown if PDF rendering fails. Non-fatal either way.
+    // style as the webhook pipeline. Attach the PDF; fall back to raw markdown.
     const studioDeckChannel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
     if (studioDeckChannel) {
       const comment = `<!channel> :page_facing_up: *Authority Codex generated in the Studio* for *${bridgeName || bridgeKey}*${saved ? ` (Memory Bank: ${saved.key})` : ''}`;
       try {
-        let fileBuffer, fileName;
-        try {
-          const pdfBytes = await markdownToPdf(markdown);
-          fileBuffer = Buffer.from(pdfBytes);
-          fileName   = `${bridgeName || 'Client'} - Authority Codex.pdf`;
-        } catch (pdfErr) {
-          console.warn('[/api/authority/generate] PDF render failed, sending markdown instead:', pdfErr.message);
-          fileBuffer = Buffer.from(markdown, 'utf8');
-          fileName   = `${bridgeName || 'Client'} - Authority Codex.md`;
-        }
+        const fileBuffer = codexPdf || Buffer.from(markdown, 'utf8');
+        const fileName   = `${bridgeName || 'Client'} - Authority Codex.${codexPdf ? 'pdf' : 'md'}`;
         await slack.uploadFile(studioDeckChannel, fileBuffer, fileName, comment);
       } catch (slackErr) {
         console.warn('[/api/authority/generate] Slack delivery failed:', slackErr.message);
+      }
+    }
+
+    // Bridge: push the codex PDF to the sales app AND send the chosen package
+    // so Iris becomes package-aware ("picks Accelerator and saves" -> sales app
+    // learns the package). Attaches to an existing client only. Non-fatal.
+    if (codexPdf && bridgeEmail) {
+      try {
+        const salesRes = await pushDocumentsToSalesApp({
+          clientEmail: bridgeEmail,
+          clientName:  bridgeName,
+          packageId:   pkg || undefined,
+          documents:   [{ type: 'authority_codex', filename: `${bridgeName || 'Client'} - Authority Codex.pdf`, bytes: codexPdf }],
+        });
+        if (salesRes) console.log(`[/api/authority/generate] sales-app: ${salesRes.attached ? 'attached codex' : 'not attached (' + salesRes.reason + ')'}, package=${pkg || 'none'}`);
+      } catch (salesErr) {
+        console.warn('[/api/authority/generate] Sales-app push failed:', salesErr.message);
       }
     }
 
