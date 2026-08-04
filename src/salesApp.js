@@ -64,4 +64,33 @@ async function fetchClientPackage(clientEmail) {
   return data.packageId || null;
 }
 
-module.exports = { pushDocumentsToSalesApp, fetchClientPackage };
+// Pull a client's Strategy Call transcript from the sales app's already-synced
+// Fathom data, so Regenerate can reuse the existing recording instead of
+// asking anyone to paste one. Returns { transcript, recordingId, presentedDate,
+// title, source } or null if not configured / no matching call / no content.
+async function fetchClientTranscript(clientEmail, clientName) {
+  if (!SALES_APP_URL || !BC_INGEST_SECRET) return null;
+  if (!clientEmail && !clientName) return null;
+  const params = new URLSearchParams();
+  if (clientEmail) params.set('email', clientEmail);
+  if (clientName)  params.set('name', clientName);
+  const url = `${SALES_APP_URL}/api/ingest/client-transcript?${params.toString()}`;
+  let res;
+  try {
+    res = await fetch(url, { headers: { authorization: `Bearer ${BC_INGEST_SECRET}` } });
+  } catch (err) {
+    console.warn('[salesApp] client-transcript fetch failed:', err.message);
+    return null;
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.found || !data.transcript) return null;
+  return {
+    transcript:    data.transcript,
+    recordingId:   data.recordingId || '',
+    presentedDate: data.presentedDate || '',
+    title:         data.title || '',
+    source:        data.source || 'transcript',
+  };
+}
+
+module.exports = { pushDocumentsToSalesApp, fetchClientPackage, fetchClientTranscript };

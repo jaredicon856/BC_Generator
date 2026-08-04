@@ -1490,6 +1490,8 @@
   .mc-regen-row label { flex: 1; min-width: 220px; }
   .mc-regen select, .mc-regen input, .mc-regen textarea { font: inherit; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--brand-ink, #041A1C); padding: 7px 9px; border: 1px solid var(--brand-border, #ddd); border-radius: 7px; background: #fff; }
   .mc-regen textarea { resize: vertical; }
+  .mc-regen-note { margin: 0; font-size: 12px; color: var(--brand-muted); }
+  .mc-regen-note a { color: var(--brand-accent); text-decoration: underline; cursor: pointer; margin-left: 6px; }
   .mc-regen-actions { display: flex; align-items: center; gap: 10px; }
   .memory-card .mc-badge {
     font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
@@ -2845,8 +2847,12 @@ function toggleRegenForm(d, card) {
         <input data-f="del" placeholder="e.g. Podcast, Book, Press" />
       </label>
     </div>
-    <label class="mc-regen-tx" data-f="txwrap" style="${d.hasTranscript ? 'display:none' : ''}">Transcript ${d.hasTranscript ? '(stored — leave blank to reuse)' : '(required — none stored for this one)'}
-      <textarea data-f="tx" rows="4" placeholder="Paste the Fathom call transcript / AI summary"></textarea>
+    <p class="mc-regen-note" data-f="txnote">${d.hasTranscript
+      ? 'Uses the stored transcript automatically. No need to paste anything.'
+      : "Automatically pulls this client's recording from Fathom. No need to paste anything."}
+      <a href="#" data-f="txtoggle">Override transcript</a></p>
+    <label class="mc-regen-tx" data-f="txwrap" style="display:none">Transcript override (optional)
+      <textarea data-f="tx" rows="4" placeholder="Only if you want to override the Fathom recording — paste a transcript / AI summary"></textarea>
     </label>
     <div class="mc-regen-actions">
       <button class="mc-btn" data-f="run">Run regeneration</button>
@@ -2860,8 +2866,12 @@ function toggleRegenForm(d, card) {
   const txWrap = panel.querySelector('[data-f="txwrap"]');
   pkgSel.addEventListener('change', () => {
     delWrap.style.display = pkgSel.value === 'custom' ? '' : 'none';
-    // Custom without stored deliverables generally needs the transcript to infer — keep tx visible if not stored.
-    if (!d.hasTranscript) txWrap.style.display = '';
+  });
+  panel.querySelector('[data-f="txtoggle"]').addEventListener('click', (e) => {
+    e.preventDefault();
+    const showing = txWrap.style.display !== 'none';
+    txWrap.style.display = showing ? 'none' : '';
+    e.target.textContent = showing ? 'Override transcript' : 'Hide override';
   });
   panel.querySelector('[data-f="cancel"]').addEventListener('click', () => panel.remove());
   panel.querySelector('[data-f="run"]').addEventListener('click', async () => {
@@ -2870,7 +2880,6 @@ function toggleRegenForm(d, card) {
     const pkg = pkgSel.value;
     const customDeliverables = panel.querySelector('[data-f="del"]').value.trim();
     const tx = panel.querySelector('[data-f="tx"]').value.trim();
-    if (!d.hasTranscript && !tx) { status.textContent = 'Paste the transcript first.'; status.classList.add('mc-status-err'); return; }
     if (!confirm('Regenerate "' + (d.name || d.email) + '"' + (pkg ? ' as ' + pkg : '') + '?\nPosts to Slack + the sales profile + Memory Bank. Takes a few minutes.')) return;
     runBtn.disabled = true; runBtn.textContent = 'Starting…';
     status.classList.remove('mc-status-err');
@@ -2882,7 +2891,10 @@ function toggleRegenForm(d, card) {
       checkAuth(res);
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Failed to start');
-      status.textContent = 'Regeneration started (~3–6 min). It posts to Slack + the sales profile and refreshes here when done.';
+      const src = data.transcriptSource && data.transcriptSource.startsWith('fathom')
+        ? ' Pulled the recording from Fathom.'
+        : (data.transcriptSource === 'pasted' ? ' Using your pasted transcript.' : '');
+      status.textContent = 'Regeneration started (~3–6 min).' + src + ' It posts to Slack + the sales profile and refreshes here when done.';
       runBtn.textContent = 'Running…';
     } catch (err) {
       status.textContent = 'Could not start: ' + err.message; status.classList.add('mc-status-err');

@@ -17,7 +17,7 @@ const { waitUntil }                 = require('@vercel/functions');
 // Client Strategy Studio (Authority Codex extract/assemble + memory + prompts)
 const { extractDeck, assembleDeck } = require('./src/authorityDeck');
 const { markdownToPdf }             = require('./src/mdPdf');
-const { pushDocumentsToSalesApp, fetchClientPackage } = require('./src/salesApp');
+const { pushDocumentsToSalesApp, fetchClientPackage, fetchClientTranscript } = require('./src/salesApp');
 const prompts                       = require('./src/prompts');
 const memory                        = require('./src/memory');
 
@@ -624,17 +624,35 @@ app.post('/api/memory/:key/regenerate', async (req, res) => {
     if (!rec) return res.status(404).json({ ok: false, error: 'Client not found in Memory Bank' });
 
     const body = req.body || {};
-    // Overrides from the request win; otherwise fall back to what's stored.
-    const transcript = (typeof body.transcript === 'string' && body.transcript.trim())
+    // Transcript source, in priority order:
+    //   1. an explicit paste in the request (a manual override)
+    //   2. the transcript stored with this codex
+    //   3. auto-pulled from the client's existing Fathom recording via the
+    //      sales app — so the team never has to paste anything for a client
+    //      that's already in the Memory Bank.
+    let transcript = (typeof body.transcript === 'string' && body.transcript.trim())
       ? body.transcript.trim()
       : (rec.transcript || '');
+    let transcriptSource = transcript ? (body.transcript ? 'pasted' : 'stored') : '';
+
     if (!transcript) {
-      return res.status(400).json({ ok: false, error: 'No transcript available — paste the call transcript to regenerate this one (it predates transcript storage).' });
+      const fetched = await fetchClientTranscript(rec.email || '', rec.name || '');
+      if (fetched && fetched.transcript) {
+        transcript = fetched.transcript;
+        transcriptSource = `fathom:${fetched.source}`;
+        console.log(`[memory/regenerate] Pulled transcript from Fathom for ${rec.name || rec.email} (${fetched.source}, recording ${fetched.recordingId || 'n/a'}).`);
+      }
+    }
+    if (!transcript) {
+      return res.status(400).json({
+        ok: false,
+        error: "Couldn't find this client's recording in Fathom, and none is stored. Paste the transcript to regenerate this one.",
+      });
     }
     const packageOverride    = body.package || rec.package || undefined;
     const customDeliverables = (typeof body.customDeliverables === 'string' ? body.customDeliverables : rec.customDeliverables) || '';
 
-    res.json({ ok: true, accepted: true, name: rec.name, package: packageOverride || null, note: 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
+    res.json({ ok: true, accepted: true, name: rec.name, package: packageOverride || null, transcriptSource, note: 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
     waitUntil(
       processFathomCall({
         clientName:        rec.name,
