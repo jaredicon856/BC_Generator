@@ -162,14 +162,14 @@ app.post('/api/generate-pitch', async (req, res) => {
 // /webhook/fathom), so it needs no Fathom secret. Useful for testing the
 // pipeline and for manually re-running a client whose real webhook failed.
 app.post('/api/simulate-call', async (req, res) => {
-  const { clientName, clientKey, transcript, presentedDate } = req.body || {};
+  const { clientName, clientKey, transcript, presentedDate, package: packageOverride, customDeliverables } = req.body || {};
   if (!clientName || !transcript) {
     return res.status(400).json({ ok: false, error: 'clientName and transcript are required' });
   }
   const storeKey = normalizeKey(clientKey || clientName);
   res.json({ ok: true, accepted: true, clientName, storeKey, note: 'Generating the full Call 1 package -> Slack. This takes a few minutes.' });
   waitUntil(
-    processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId: null }).catch((err) => {
+    processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId: null, packageOverride, customDeliverables }).catch((err) => {
       console.error('[simulate-call] Background processing failed:', err.message);
     })
   );
@@ -246,7 +246,7 @@ app.post('/api/webhook/fathom', async (req, res) => {
 //   3) Voice meeting summary (mp3)
 // Every delivery step is independently try/caught: one failure never blocks
 // the others.
-async function processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId }) {
+async function processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId, packageOverride, customDeliverables }) {
   if (recordingId) await store.set(`processed:${recordingId}`, true);
 
   const channel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
@@ -264,15 +264,17 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
   // the package is known, use the package-scoped Studio generator (extract →
   // assemble → PDF). When it can't be determined, fall back to the original
   // podcast-funnel generator so there's no regression.
-  let pkg = null;
-  try { pkg = await fetchClientPackage(clientKey); }
-  catch (e) { console.warn('[webhook/fathom] Package lookup failed:', e.message); }
+  let pkg = packageOverride || null;
+  if (!pkg) {
+    try { pkg = await fetchClientPackage(clientKey); }
+    catch (e) { console.warn('[webhook/fathom] Package lookup failed:', e.message); }
+  }
   const VALID_PACKAGES = ['ecosystem', 'accelerator', 'podcast', 'custom'];
 
   let codexPdf, authorityDeck, codexJson, codexMarkdown, codexPackage;
   if (VALID_PACKAGES.includes(pkg)) {
-    const extraction = await extractDeck({ clientName, clientEmail: clientKey || '', presentedDate, transcript, package: pkg });
-    codexMarkdown = await assembleDeck(extraction, pkg, '');
+    const extraction = await extractDeck({ clientName, clientEmail: clientKey || '', presentedDate, transcript, package: pkg, customDeliverables: customDeliverables || '' });
+    codexMarkdown = await assembleDeck(extraction, pkg, customDeliverables || '');
     codexPdf      = await markdownToPdf(codexMarkdown);
     authorityDeck = codexMarkdown;   // battlecard context (markdown)
     codexJson     = extraction;
