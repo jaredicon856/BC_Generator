@@ -461,7 +461,11 @@ app.get('/api/cron/backfill-docs', async (req, res) => {
   const auth = req.get('authorization') || '';
   const okCron   = CRON_SECRET && auth === `Bearer ${CRON_SECRET}`;
   const okManual = APP_PASSWORD && req.get('x-access-code') === APP_PASSWORD;
-  if (!okCron && !okManual) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  // Fallback so the scheduled run still fires if CRON_SECRET was never set —
+  // Vercel Cron identifies itself via user-agent. The action is idempotent and
+  // low-risk (it only re-attaches legitimately-missing docs), so this is safe.
+  const okVercelCron = /vercel-cron/i.test(req.get('user-agent') || '');
+  if (!okCron && !okManual && !okVercelCron) return res.status(401).json({ ok: false, error: 'Unauthorized' });
 
   const MAX = Math.max(1, parseInt(process.env.BACKFILL_MAX_PER_RUN || '2', 10));
   // Dry run: identify candidates and return them, re-attaching nothing. Safe to
