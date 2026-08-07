@@ -388,6 +388,13 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
   }
 }
 
+// ── GET /api/version ───────────────────────────────────
+// Lightweight, unauthenticated build marker so a deploy can be confirmed live
+// before triggering a config-dependent action (e.g. skipSlack re-attach).
+app.get('/api/version', (req, res) => {
+  res.json({ ok: true, features: { skipSlackReattach: true } });
+});
+
 // ── POST /api/generate-authority-deck ──────────────────
 app.post('/api/generate-authority-deck', async (req, res) => {
   startSSE(res);
