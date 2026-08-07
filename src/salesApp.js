@@ -93,4 +93,46 @@ async function fetchClientTranscript(clientEmail, clientName) {
   };
 }
 
-module.exports = { pushDocumentsToSalesApp, fetchClientPackage, fetchClientTranscript };
+// Fire an ops alert email (via the sales app's Resend sender) when something
+// needs a human — e.g. an automated codex/guide push that did NOT attach to a
+// client profile. Non-fatal: a failed alert never affects generation.
+async function sendOpsAlert({ subject, lines }) {
+  if (!SALES_APP_URL || !BC_INGEST_SECRET) return null;
+  try {
+    const res = await fetch(`${SALES_APP_URL}/api/ingest/alert`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BC_INGEST_SECRET}` },
+      body: JSON.stringify({ subject, lines: lines || [] }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.sent) {
+      console.warn('[salesApp] ops alert not sent:', data.error || res.status);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('[salesApp] ops alert failed:', err.message);
+    return null;
+  }
+}
+
+// What document types are currently attached to a client's sales-app profile.
+// Returns { found, types: string[] } or null if not configured / error.
+// Read-only; used by the nightly backfill sweep to find missing codex/guide.
+async function fetchClientDocTypes(clientEmail) {
+  if (!SALES_APP_URL || !BC_INGEST_SECRET || !clientEmail) return null;
+  const url = `${SALES_APP_URL}/api/ingest/client-documents?email=${encodeURIComponent(clientEmail)}`;
+  try {
+    const res = await fetch(url, { headers: { authorization: `Bearer ${BC_INGEST_SECRET}` } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return null;
+    return {
+      found: !!data.found,
+      types: Array.isArray(data.documents) ? data.documents.map((d) => d.docType) : [],
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+module.exports = { pushDocumentsToSalesApp, fetchClientPackage, fetchClientTranscript, sendOpsAlert, fetchClientDocTypes };

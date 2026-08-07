@@ -17,7 +17,7 @@ const { waitUntil }                 = require('@vercel/functions');
 // Client Strategy Studio (Authority Codex extract/assemble + memory + prompts)
 const { extractDeck, assembleDeck } = require('./src/authorityDeck');
 const { markdownToPdf }             = require('./src/mdPdf');
-const { pushDocumentsToSalesApp, fetchClientPackage, fetchClientTranscript } = require('./src/salesApp');
+const { pushDocumentsToSalesApp, fetchClientPackage, fetchClientTranscript, sendOpsAlert, fetchClientDocTypes } = require('./src/salesApp');
 const prompts                       = require('./src/prompts');
 const memory                        = require('./src/memory');
 
@@ -37,6 +37,9 @@ app.use('/api', (req, res, next) => {
   // (checked inside its own route handler) -- it's called by Zapier/Make,
   // not a browser with the access code, so it's exempt from this gate.
   if (req.path === '/webhook/fathom') return next();
+  // Vercel Cron calls this with Authorization: Bearer CRON_SECRET, not the
+  // browser access code — it verifies CRON_SECRET inside the handler.
+  if (req.path === '/cron/backfill-docs') return next();
   if (!APP_PASSWORD) return next();
   const provided = req.get('x-access-code') || '';
   if (provided === APP_PASSWORD) return next();
@@ -351,10 +354,37 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
       ],
     });
     if (salesRes) {
-      console.log(`[sales-app] ${salesRes.attached ? `attached ${salesRes.stored?.length || 0} doc(s) to client ${salesRes.clientId}` : `not attached (${salesRes.reason})`}`);
+      const reason = salesRes.reason || (salesRes.skipped && salesRes.skipped.length ? salesRes.skipped.map((s) => `${s.type}:${s.reason}`).join(', ') : 'unknown');
+      console.log(`[sales-app] ${salesRes.attached ? `attached ${salesRes.stored?.length || 0} doc(s) to client ${salesRes.clientId}` : `not attached (${reason})`}`);
+      // Alert on a silent miss: the codex/guide were generated but did NOT land
+      // on the client profile. This is the Steve Fair failure mode — invisible
+      // until someone eyeballs the profile. Email so it's caught same day.
+      if (!salesRes.attached) {
+        await sendOpsAlert({
+          subject: `Codex/Guide did NOT attach for ${clientName || clientKey || 'a client'}`,
+          lines: [
+            `Client: ${clientName || '(no name)'} <${clientKey || 'no-email'}>`,
+            `Reason: ${reason}`,
+            reason === 'no_matching_client'
+              ? 'No matching Command Center client for that email. If they ARE a client, their profile email may differ from the Fathom invitee email, or the profile was created after the call ran.'
+              : 'The client matched but the documents were not stored — see reason above.',
+            'The codex + guide WERE generated and delivered to Slack; only the profile attach was missed.',
+            `Fix: open ${clientName || clientKey} in the BC Memory Bank and click Regenerate (it silently re-attaches; the nightly sweep will also retry).`,
+          ],
+        }).catch(() => {});
+      }
     }
   } catch (salesErr) {
     console.error('[sales-app] Document push failed:', salesErr.message);
+    await sendOpsAlert({
+      subject: `Codex/Guide push ERRORED for ${clientName || clientKey || 'a client'}`,
+      lines: [
+        `Client: ${clientName || '(no name)'} <${clientKey || 'no-email'}>`,
+        `Error: ${salesErr.message}`,
+        'The codex + guide were generated (and delivered to Slack) but the sales-app push threw before attaching.',
+        `Fix: retry via Regenerate in the BC Memory Bank, or wait for the nightly backfill sweep.`,
+      ],
+    }).catch(() => {});
   }
 
   // Silent re-attach mode: regenerate + push to the sales-app profile + save to
@@ -392,7 +422,97 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
 // Lightweight, unauthenticated build marker so a deploy can be confirmed live
 // before triggering a config-dependent action (e.g. skipSlack re-attach).
 app.get('/api/version', (req, res) => {
-  res.json({ ok: true, features: { skipSlackReattach: true } });
+  res.json({ ok: true, features: { skipSlackReattach: true, backfillSweep: true } });
+});
+
+// Rebuild a stored client's package and silently re-attach it to the sales-app
+// profile (no Slack). Transcript comes from the stored record, else the client's
+// existing Fathom recording. Shared by the nightly backfill sweep.
+async function reattachStoredClient(rec, { skipSlack = true } = {}) {
+  let transcript = (rec.transcript || '').trim();
+  let transcriptSource = transcript ? 'stored' : '';
+  if (!transcript) {
+    const fetched = await fetchClientTranscript(rec.email || '', rec.name || '');
+    if (fetched && fetched.transcript) { transcript = fetched.transcript; transcriptSource = `fathom:${fetched.source}`; }
+  }
+  if (!transcript) return { ok: false, error: 'no transcript available (stored or Fathom)' };
+  await processFathomCall({
+    clientName:        rec.name,
+    clientKey:         rec.email || '',
+    storeKey:          normalizeKey(rec.email || rec.name),
+    transcript,
+    presentedDate:     (rec.json && rec.json.meta && rec.json.meta.presentedDate) || '',
+    recordingId:       null,
+    packageOverride:   rec.package || undefined,
+    customDeliverables: rec.customDeliverables || '',
+    skipSlack,
+  });
+  return { ok: true, transcriptSource };
+}
+
+// ── GET /api/cron/backfill-docs ────────────────────────
+// Nightly safety net: find Memory Bank clients that MATCH a sales-app profile
+// but are missing their codex/guide there (a silent push miss), and silently
+// re-attach them. Emails a summary only when it actually did something.
+// Auth: Vercel Cron sends Authorization: Bearer CRON_SECRET; a manual run may
+// use the browser access code instead. Capped per run to bound cost/time.
+app.get('/api/cron/backfill-docs', async (req, res) => {
+  const CRON_SECRET = process.env.CRON_SECRET || '';
+  const auth = req.get('authorization') || '';
+  const okCron   = CRON_SECRET && auth === `Bearer ${CRON_SECRET}`;
+  const okManual = APP_PASSWORD && req.get('x-access-code') === APP_PASSWORD;
+  if (!okCron && !okManual) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+
+  const MAX = Math.max(1, parseInt(process.env.BACKFILL_MAX_PER_RUN || '2', 10));
+  res.json({ ok: true, started: true, max: MAX, note: 'Backfill sweep running in the background.' });
+
+  waitUntil((async () => {
+    const summary = { checked: 0, candidates: [], attached: [], failed: [], deferred: [] };
+    try {
+      const list = await memory.list();
+      const candidates = [];
+      for (const r of list) {
+        if (!r.email || !r.hasCodex) continue;
+        summary.checked++;
+        const dt = await fetchClientDocTypes(r.email);
+        if (!dt || !dt.found) continue;                 // not a matchable client — nothing to attach
+        const hasCodex = dt.types.includes('authority_codex');
+        const hasGuide = dt.types.includes('podcast_strategy_guide');
+        if (hasCodex && hasGuide) continue;             // already attached — skip
+        candidates.push(r);
+      }
+      summary.candidates = candidates.map((c) => c.name || c.email);
+      const toRun = candidates.slice(0, MAX);
+      summary.deferred = candidates.slice(MAX).map((c) => c.name || c.email);
+
+      for (const c of toRun) {
+        try {
+          const rec = await memory.get(c.key);
+          const r = await reattachStoredClient(rec, { skipSlack: true });
+          if (r.ok) summary.attached.push(`${c.name || c.email} (${r.transcriptSource})`);
+          else summary.failed.push(`${c.name || c.email}: ${r.error}`);
+        } catch (e) {
+          summary.failed.push(`${c.name || c.email}: ${e.message}`);
+        }
+      }
+    } catch (e) {
+      summary.failed.push(`sweep error: ${e.message}`);
+    }
+
+    // Stay quiet on empty runs; email only when the sweep acted or hit trouble.
+    if (summary.attached.length || summary.failed.length || summary.deferred.length) {
+      await sendOpsAlert({
+        subject: `Nightly doc backfill — ${summary.attached.length} re-attached${summary.failed.length ? `, ${summary.failed.length} failed` : ''}`,
+        lines: [
+          `Checked ${summary.checked} Memory Bank clients with a stored codex.`,
+          ...(summary.attached.length ? [`Re-attached: ${summary.attached.join('; ')}`] : []),
+          ...(summary.failed.length   ? [`Failed: ${summary.failed.join('; ')}`]       : []),
+          ...(summary.deferred.length ? [`Deferred to next run (cap ${MAX}): ${summary.deferred.join('; ')}`] : []),
+        ],
+      }).catch(() => {});
+    }
+    console.log('[cron/backfill-docs]', JSON.stringify(summary));
+  })());
 });
 
 // ── POST /api/generate-authority-deck ──────────────────
