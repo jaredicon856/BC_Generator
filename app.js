@@ -246,7 +246,7 @@ app.post('/api/webhook/fathom', async (req, res) => {
 //   3) Voice meeting summary (mp3)
 // Every delivery step is independently try/caught: one failure never blocks
 // the others.
-async function processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId, packageOverride, customDeliverables }) {
+async function processFathomCall({ clientName, clientKey, storeKey, transcript, presentedDate, recordingId, packageOverride, customDeliverables, skipSlack }) {
   if (recordingId) await store.set(`processed:${recordingId}`, true);
 
   const channel = process.env.SLACK_CHANNEL_AUTHORITY_DECK || process.env.SLACK_CHANNEL_ID;
@@ -355,6 +355,14 @@ async function processFathomCall({ clientName, clientKey, storeKey, transcript, 
     }
   } catch (salesErr) {
     console.error('[sales-app] Document push failed:', salesErr.message);
+  }
+
+  // Silent re-attach mode: regenerate + push to the sales-app profile + save to
+  // Memory Bank, but skip the Slack #channel post. Used to backfill a client
+  // whose codex/guide never landed on their profile, without re-pinging the team.
+  if (skipSlack) {
+    console.log(`[webhook/fathom] skipSlack — re-attached "${clientName}" to sales app + Memory Bank, no Slack post.`);
+    return;
   }
 
   if (!channel) {
@@ -651,8 +659,14 @@ app.post('/api/memory/:key/regenerate', async (req, res) => {
     }
     const packageOverride    = body.package || rec.package || undefined;
     const customDeliverables = (typeof body.customDeliverables === 'string' ? body.customDeliverables : rec.customDeliverables) || '';
+    // Silent re-attach: rebuild + push to the sales-app profile + Memory Bank
+    // without posting to the Slack #channel. For fixing a profile that never
+    // got its codex/guide, with no team-facing noise.
+    const skipSlack = body.skipSlack === true;
 
-    res.json({ ok: true, accepted: true, name: rec.name, package: packageOverride || null, transcriptSource, note: 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
+    res.json({ ok: true, accepted: true, name: rec.name, package: packageOverride || null, transcriptSource, skipSlack, note: skipSlack
+      ? 'Silently re-attaching to the sales profile + Memory Bank (no Slack post). Takes a few minutes.'
+      : 'Regenerating the full package -> Slack + sales app + Memory Bank. Takes a few minutes.' });
     waitUntil(
       processFathomCall({
         clientName:        rec.name,
@@ -663,6 +677,7 @@ app.post('/api/memory/:key/regenerate', async (req, res) => {
         recordingId:       null,
         packageOverride,
         customDeliverables,
+        skipSlack,
       }).catch((err) => console.error('[memory/regenerate] Background processing failed:', err.message))
     );
   } catch (err) {
