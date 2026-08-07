@@ -464,6 +464,30 @@ app.get('/api/cron/backfill-docs', async (req, res) => {
   if (!okCron && !okManual) return res.status(401).json({ ok: false, error: 'Unauthorized' });
 
   const MAX = Math.max(1, parseInt(process.env.BACKFILL_MAX_PER_RUN || '2', 10));
+  // Dry run: identify candidates and return them, re-attaching nothing. Safe to
+  // validate the sweep's detection without triggering any regeneration/email.
+  const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true';
+
+  if (dryRun) {
+    const out = { checked: 0, candidates: [] };
+    try {
+      const list = await memory.list();
+      for (const r of list) {
+        if (!r.email || !r.hasCodex) continue;
+        out.checked++;
+        const dt = await fetchClientDocTypes(r.email);
+        if (!dt || !dt.found) continue;
+        const hasCodex = dt.types.includes('authority_codex');
+        const hasGuide = dt.types.includes('podcast_strategy_guide');
+        if (hasCodex && hasGuide) continue;
+        out.candidates.push({ name: r.name || r.email, email: r.email, attachedTypes: dt.types });
+      }
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+    return res.json({ ok: true, dryRun: true, max: MAX, ...out });
+  }
+
   res.json({ ok: true, started: true, max: MAX, note: 'Backfill sweep running in the background.' });
 
   waitUntil((async () => {
