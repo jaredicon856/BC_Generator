@@ -768,6 +768,41 @@ app.get('/api/memory/:key', async (req, res) => {
   }
 });
 
+// ── GET /api/memory/:key/download/:doc ─────────────────
+// Re-download a stored deliverable as PDF. doc = 'codex' | 'guide'. Renders
+// server-side from the saved record so the codex works whether it was stored as
+// markdown (package-scoped Studio path) or JSON (fallback generator).
+app.get('/api/memory/:key/download/:doc', async (req, res) => {
+  try {
+    const rec = await memory.get(req.params.key);
+    if (!rec) return res.status(404).json({ ok: false, error: 'Client not found in Memory Bank' });
+    const slug = (rec.name || rec.email || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+    if (req.params.doc === 'codex') {
+      let bytes;
+      if (rec.markdown)      bytes = await markdownToPdf(rec.markdown);
+      else if (rec.json)     bytes = await generateAuthorityDeckPDF(rec.json);
+      else return res.status(404).json({ ok: false, error: 'No Authority Codex stored for this client' });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${slug}-authority-codex.pdf"`);
+      return res.send(Buffer.from(bytes));
+    }
+
+    if (req.params.doc === 'guide') {
+      if (!rec.battlecard) return res.status(404).json({ ok: false, error: 'No Podcast Strategy Guide stored for this client' });
+      const bytes = await generatePDF(rec.battlecard, {}, null);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${slug}-podcast-strategy-guide.pdf"`);
+      return res.send(Buffer.from(bytes));
+    }
+
+    return res.status(400).json({ ok: false, error: 'Unknown document (use codex or guide)' });
+  } catch (err) {
+    console.error('[/api/memory/:key/download]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.delete('/api/memory/:key', async (req, res) => {
   try {
     res.json({ ok: await memory.remove(req.params.key) });

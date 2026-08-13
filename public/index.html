@@ -1472,17 +1472,24 @@
   /* ── Memory bank ────────────────────────────────────── */
   #view-memory h2 { font-family: var(--font-display); font-size: 24px; font-weight: 600; margin-bottom: 4px; }
   .memory-hint { font-size: 13px; color: var(--brand-muted); margin-bottom: 24px; }
-  .memory-list { display: flex; flex-direction: column; gap: 12px; max-width: 820px; }
+  .memory-list { display: flex; flex-direction: column; gap: 12px; max-width: 860px; }
   .memory-card {
-    display: flex; align-items: center; gap: 16px;
+    display: flex; flex-direction: column; gap: 12px;
     background: #fff; border: 1px solid var(--brand-border); border-radius: 10px; padding: 16px 20px;
   }
-  .memory-card .mc-main { flex: 1; }
+  .memory-card .mc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .memory-card .mc-main { flex: 1; min-width: 200px; }
   .memory-card .mc-name { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
   .memory-card .mc-meta { font-size: 12px; color: var(--brand-muted); margin-top: 3px; }
-  .memory-card .mc-status { font-size: 12px; color: var(--brand-accent); margin-top: 5px; }
+  .memory-card .mc-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .memory-card .mc-status { font-size: 12px; color: var(--brand-accent); }
   .memory-card .mc-status:empty { display: none; }
   .memory-card .mc-status.mc-status-err { color: #c62828; }
+  /* Actions row: grouped downloads, then deck actions, Delete pushed right. */
+  .memory-card .mc-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--brand-border); padding-top: 12px; }
+  .memory-card .mc-dl { display: flex; align-items: center; gap: 8px; padding-right: 12px; border-right: 1px solid var(--brand-border); }
+  .memory-card .mc-dl-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--brand-muted); }
+  .memory-card .mc-btn.danger { margin-left: auto; }
   .mc-btn[disabled] { opacity: .45; cursor: not-allowed; }
   .mc-regen { max-width: 820px; margin: -6px 0 4px; padding: 14px 16px; border: 1px solid var(--brand-accent); border-radius: 10px; background: rgba(0,0,0,.02); display: flex; flex-direction: column; gap: 10px; }
   .mc-regen label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--brand-muted); }
@@ -1498,11 +1505,13 @@
     color: var(--brand-accent-mid, #b9902f); background: #faf3e2; border-radius: 4px; padding: 3px 8px;
   }
   .mc-btn {
-    font-family: var(--font-body); font-size: 12.5px; font-weight: 600; cursor: pointer;
+    font-family: var(--font-body); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
     background: none; border: 1px solid var(--brand-border); border-radius: 6px; padding: 7px 13px; color: var(--brand-text);
     transition: border-color 0.15s, color 0.15s;
   }
   .mc-btn:hover { border-color: var(--brand-accent); }
+  .mc-btn.primary { color: var(--brand-accent-mid, #b9902f); border-color: var(--brand-accent); background: #faf3e2; }
+  .mc-btn.primary:hover { background: #f6ead0; }
   .mc-btn.danger { color: #c62828; }
   .mc-btn.danger:hover { border-color: #c62828; }
   .memory-empty { font-size: 13px; color: var(--brand-muted); padding: 30px 0; }
@@ -2760,22 +2769,31 @@ async function loadMemory() {
         d.hasGuide ? `<span class="mc-badge">+ strategy guide</span>` : '',
       ].join('');
       card.innerHTML = `
-        <div class="mc-main">
-          <div class="mc-name">${(d.name || d.email || d.key).replace(/</g,'&lt;')}</div>
-          <div class="mc-meta">${d.email ? d.email.replace(/</g,'&lt;') + ' · ' : ''}${when}${d.versionCount ? ' · ' + d.versionCount + ' prior version(s)' : ''}</div>
-          <div class="mc-status" data-role="status"></div>
+        <div class="mc-top">
+          <div class="mc-main">
+            <div class="mc-name">${(d.name || d.email || d.key).replace(/</g,'&lt;')}</div>
+            <div class="mc-meta">${d.email ? d.email.replace(/</g,'&lt;') + ' · ' : ''}${when}${d.versionCount ? ' · ' + d.versionCount + ' prior version(s)' : ''}</div>
+          </div>
+          <div class="mc-badges">${badges}</div>
         </div>
-        ${badges}
-        <button class="mc-btn" data-act="view">View</button>
-        ${d.hasGuide ? '<button class="mc-btn" data-act="guide">Guide PDF</button>' : ''}
-        <button class="mc-btn" data-act="use">Use in Stage 2</button>
-        <button class="mc-btn" data-act="regen">Regenerate…</button>
-        <button class="mc-btn danger" data-act="del">Delete</button>`;
+        <div class="mc-status" data-role="status"></div>
+        <div class="mc-actions">
+          <div class="mc-dl">
+            <span class="mc-dl-label">Download</span>
+            <button class="mc-btn primary" data-act="dl-codex">Codex PDF</button>
+            <button class="mc-btn primary" data-act="dl-guide"${d.hasGuide ? '' : ' disabled title="No strategy guide stored yet — Regenerate to build one"'}>Guide PDF</button>
+          </div>
+          <button class="mc-btn" data-act="view">View</button>
+          <button class="mc-btn" data-act="use">Use in Stage 2</button>
+          <button class="mc-btn" data-act="regen">Regenerate…</button>
+          <button class="mc-btn danger" data-act="del">Delete</button>
+        </div>`;
       card.querySelector('[data-act="view"]').addEventListener('click', () => viewDeck(d.key));
       card.querySelector('[data-act="use"]').addEventListener('click', () => useDeck(d));
       card.querySelector('[data-act="del"]').addEventListener('click', () => delDeck(d));
-      const guideBtn = card.querySelector('[data-act="guide"]');
-      if (guideBtn) guideBtn.addEventListener('click', () => downloadGuide(d.key, d.name));
+      card.querySelector('[data-act="dl-codex"]').addEventListener('click', (e) => downloadDoc(d.key, d.name, 'codex', e.target));
+      const guideBtn = card.querySelector('[data-act="dl-guide"]');
+      if (guideBtn && !guideBtn.disabled) guideBtn.addEventListener('click', (e) => downloadDoc(d.key, d.name, 'guide', e.target));
       card.querySelector('[data-act="regen"]').addEventListener('click', () => toggleRegenForm(d, card));
       list.appendChild(card);
     });
@@ -2801,25 +2819,33 @@ async function delDeck(d) {
   loadMemory();
 }
 // Download the stored Strategy Guide as a PDF (renders the battlecard server-side).
-async function downloadGuide(key, name) {
+// Re-download a stored deliverable (doc = 'codex' | 'guide'). Rendered
+// server-side from the saved record, so it works for both the markdown and
+// JSON codex formats and always reflects what was generated.
+async function downloadDoc(key, name, doc, btn) {
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
-    const rec = await (await fetch('/api/memory/' + key, { headers: authHeaders() })).json();
-    const battlecard = rec.deck && rec.deck.battlecard;
-    if (!battlecard) { alert('No strategy guide stored for this client.'); return; }
-    const res = await fetch('/api/export-pdf', {
-      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ battlecard }),
-    });
+    const res = await fetch('/api/memory/' + key + '/download/' + doc, { headers: authHeaders() });
     checkAuth(res);
-    if (!res.ok) throw new Error('Export failed');
+    if (!res.ok) {
+      let msg = 'Download failed';
+      try { msg = (await res.json()).error || msg; } catch (_) {}
+      throw new Error(msg);
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = ((name || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '-podcast-strategy-guide.pdf';
+    const suffix = doc === 'codex' ? '-authority-codex.pdf' : '-podcast-strategy-guide.pdf';
+    a.download = ((name || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-')) + suffix;
     a.click();
     URL.revokeObjectURL(url);
-  } catch (err) { alert('Could not download guide: ' + err.message); }
+  } catch (err) {
+    alert('Could not download ' + doc + ': ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 // Regenerate the full package for a saved client (codex + guide + voice) →
 // Slack + sales app + Memory Bank. Opens a small form to CHOOSE the package
